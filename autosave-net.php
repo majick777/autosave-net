@@ -1246,7 +1246,8 @@ function autosave_net_quicksave_compare_saved_versions() {
 		$vdifference = str_replace('<td></td><th>'.$vargs['title_left'],'<th>'.$vargs['title_left'],$vdifference);
 		$vdifference = str_replace('<td></td><th>'.$vargs['title_right'],'<th>'.$vargs['title_right'],$vdifference);
 		$vdifference = str_replace('<td>&nbsp;</td>','',$vdifference);
-		$vdifference .= "<style>table.diff {table-layout:auto !important;} td.diff-context {width:50% !important;}</style>";
+		$vdifference .= "<style>table.diff {table-layout:auto !important;}
+		td.diff-context, td.diff-deletedline, td.diff-addedline {width:50% !important;}</style>";
 
 		echo "<br>".$vdifference."<br>";
 		echo "<input style='float:left;background:#EEE;border-radius:3px;' type='button' class='button-secondary' onclick='restorecontent(\"".$vsavedtype."\",\"".$vcontenttype."\");' value='".__('Restore Left-Hand Content','autosave-net')."'>";
