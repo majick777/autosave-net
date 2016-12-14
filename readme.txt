@@ -1,7 +1,7 @@
 === AutoSave Net ===
 Contributors: majick
 Donate link: http://wordquest.org/contribute/?plugin=autosave-net
-Tags: autosave, auto save, autosave net, autosave manager, quicksave, content backup, content save, content net
+Tags: autosave, auto save, autosave net, autosave manager, quicksave, content backup, content save, draft
 Author URI: http://dreamjester.net
 Plugin URI: http://wordquest.org/plugins/autosave-net/
 License: GPLv2 or later
@@ -20,15 +20,13 @@ AutoSave Net was built to catch your content from being lost as you are writing 
 
 AutoSave Net adds a timed QuickSave Backup via AJAX for just your post content (not metadata) that saves your work regularly, and let's your easily compare your saved content with the Pageload or Autosave content using the inbuilt WordPress visual difference function. This means you can quickly and easily see your latest content and restore it without hassles. Why lose or rewrite any more sentences?
 
-You can also control if when and how often the QuickSave Backup is done on a post by post basis via the post metabox, or adjust which post types you want to the QuickSave Backup to run for the Settings screen.
+You can also control if when and how often the QuickSave Backup is done on a post by post basis via the post metabox, or adjust which post types you want to the QuickSave Backup to run for on the Admin screen.
 
 The QuickSave Backup works independently and side-by-side the inbuilt WordPress AutoSave, but the AutoSave Net plugin also allows you to modify the inbuilt WordPress AutoSave Options:
 
 * Limit Number of Post Revisions stored for each post
 * Change the WordPress AutoSave backup interval
 * Disable WordPress AutoSave entirely if you like
-
-Plus, filters are available to conditionally modify these options further.
 
 [AutoSave Net Home] (http://wordquest.org/plugins/autosave-net/)
 
@@ -44,6 +42,10 @@ Plus, filters are available to conditionally modify these options further.
 
 
 == Screenshots ==
+
+1. A screenshot of the QuickSave metabox.
+1. A screenshot of the QuickSave comparison box.
+1. A screenshot of the AutoSave Net admin screen.
 
 
 == Changelog ==
@@ -74,7 +76,7 @@ Plus, filters are available to conditionally modify these options further.
 
 == Other Notes ==
 
-[AutoSave Net Home] (http://wordquest.org/plugins/wp-automedic/)
+[AutoSave Net Home] (http://wordquest.org/plugins/autosave-net/)
 
 Like this plugin? Check out more of our free plugins here: 
 [WordQuest Alliance] (http://wordquest.org/plugins/ "WordQuest Alliance Plugins")
@@ -84,7 +86,7 @@ Looking for an awesome theme? Check out my child theme framework:
 
 = Support = 
 For support or if you have an idea to improve this plugin:
-[AutoSave Net Support] (http://wordquest.org/quest/quest-category/plugin-support/autosave-net/ "AutoSave Net Support Quests")
+[AutoSave Net Support] (http://wordquest.org/support/autosave-net/ "AutoSave Net Support Quests")
 
 = Contribute = 
 Help fund support, improvements and log priority feature requests by a gift of appreciation:
