@@ -50,6 +50,11 @@ The QuickSave Backup works independently and side-by-side the inbuilt WordPress 
 
 == Changelog ==
 
+= 1.3.0 =
+* Update to Wordquest Libarary 1.6.5
+* Change plugin_dir_url usage to plugins_url
+* Added settings validation
+
 = 1.2.5 = 
 * Update to Freemius Library
 * Added Translation-ready Wrappers
