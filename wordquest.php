@@ -24,6 +24,15 @@
 // HELPER CHANGELOG
 // ================
 
+// -- 1.6.5 --
+// - added stickykit to replace float script
+// - added basic string translation wrappers
+// - added debug output switch
+// - split released / upcoming plugin boxes
+// - fix to latest / next release box
+// - fix to sidebar options saving call
+// - fix to admin notice boxer
+
 // -- 1.6.0 --
 // - use variable function names
 // - change function prefix to wqhelper
@@ -54,8 +63,6 @@
 // - added bonus report
 
 // TODO: collapse/expand buttons for sidebar?
-// TODO: replace floating menu with sticky kit?
-
 
 
 // START CODE - PHP 5.3 MINIMUM REQUIRED FOR ANONYMOUS FUNCTIONS
@@ -65,8 +72,19 @@ if (version_compare(PHP_VERSION, '5.3.0') >= 0) {
 // Set this Wordquest Helper Plugin version
 // ----------------------------------------
 // 1.6.0: wqv to wqhv for new variable functions
-$wordquestversion = '1.6.0';
-$wqhv = str_replace('.','',$wordquestversion);
+$wordquestversion = '1.6.5'; $wqhv = str_replace('.','',$wordquestversion);
+
+// 1.6.5: set global site URLs
+// ---------------------------
+global $wqurls;
+$wqurls['wq'] = 'http://wordquest.org';
+$wqurls['prn'] = 'http://pluginreview.net';
+$wqurls['bio'] = 'http://bioship.space';
+
+// 1.6.5: maybe set debug switch
+// -----------------------------
+global $wqdebug; $wqdebug = false;
+if ( (isset($_REQUEST['wqdebug'])) && ($_REQUEST['wqdebug'] == 'yes') ) {$wqdebug = true;}
 
 // =================================
 // Version Handling Loader Functions
@@ -82,18 +100,20 @@ elseif (!in_array($wqhv,$wordquesthelpers)) {$wordquesthelpers[] = $wqhv;}
 
 // Set Latest Wordquest Version on Admin Load
 // ------------------------------------------
-// 1.5.0: use admin_init not plugins_loaded so usable by themes
+// 1.5.0: use admin_init not plugins_loaded so as to be usable by themes
 if (!has_action('admin_init','wqhelper_admin_loader',1)) {add_action('admin_init','wqhelper_admin_loader',1);}
 
 if (!function_exists('wqhelper_admin_loader')) {
  function wqhelper_admin_loader() {
+ 	global $wqdebug;
+
  	// 1.6.0: maybe remove the pre 1.6.0 load action?
  	// if (has_action('admin_init','wordquest_admin_load')) {remove_action('admin_init','wordquest_admin_load');}
 
  	// 1.6.0: new globals used for new method
  	global $wordquesthelper, $wordquesthelpers;
  	$wordquesthelper = max($wordquesthelpers);
- 	// echo "<!-- WHQV: ".$wordquesthelper." -->"; // debug point
+ 	if ($wqdebug) {echo "<!-- WHQV: ".$wordquesthelper." -->";}
 
 	// 1.6.0: set the function caller helper
 	global $wqcaller, $wqfunctions;
@@ -103,7 +123,7 @@ if (!function_exists('wqhelper_admin_loader')) {
 	if (is_callable($wqfunctions[$vfunc])) {
 		$wqfunctions[$vfunc]($vfunctionname); // $wqcaller = $wqfunctions[$vfunctionname];
 	} elseif (function_exists($vfunc)) {call_user_func($vfunc,$vfunctionname);}
-	// echo "<!-- WQ CALLER: "; print_r($wqcaller); echo " -->";
+	if ($wqdebug) {echo "<!-- WQ CALLER: "; print_r($wqcaller); echo " -->";}
 
  	// 1.5.0: set up any admin notices via helper version
  	// 1.6.0: ...use caller function directly for this
@@ -118,7 +138,7 @@ if (!function_exists('wqhelper_admin_loader')) {
 // ----------------------------------
 // 1.6.0: some lovely double abstraction here!
 $vfuncname = 'wqhelper_caller_'.$wqhv;
-if (!is_callable($wqfunctions[$vfuncname])) {
+if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
 	$wqfunctions[$vfuncname] = function($vfunc) {
 		global $wqfunctions, $wqcaller;
 		if (!is_callable($wqcaller)) {
@@ -133,8 +153,15 @@ if (!is_callable($wqfunctions[$vfuncname])) {
 }
 
 
-// Call to Versioned Admin Page Functions
-// --------------------------------------
+// Versioned Admin Page Caller Functions
+// -------------------------------------
+// wqhelper_admin_page
+// wqhelper_admin_notice_boxer
+// wqhelper_get_plugin_info
+// wqhelper_admin_plugins_column
+// wqhelper_admin_feeds_column
+// wqhelper_install_plugin
+// wqhelper_reminder_notice
 if (!function_exists('wqhelper_admin_page')) {function wqhelper_admin_page($vargs = null) {
  	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
 // admin notice boxer
@@ -150,12 +177,21 @@ if (!function_exists('wqhelper_admin_plugins_column')) {function wqhelper_admin_
 if (!function_exists('wqhelper_admin_feeds_column')) {function wqhelper_admin_feeds_column($vargs = null) {
  	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
 
+// 1.6.5: WordQuest plugin install
+if (!function_exists('wqhelper_install_plugin')) {function wqhelper_install_plugin($vargs = null) {
+ 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
+// 1.6.5: reminder notice message
+if (!function_exists('wqhelper_reminder_notice')) {function wqhelper_reminder_notice($vargs = null) {
+ 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
+
+
 // Sidebar Floatbox Caller Functions
 // ---------------------------------
 // wqhelper_sidebar_floatbox
 // wqhelper_sidebar_paypal_donations
 // wqhelper_sidebar_testimonial_box
 // wqhelper_sidebar_floatmenuscript
+// wqhelper_sidebar_stickykitscript
 
 if (!function_exists('wqhelper_sidebar_floatbox')) {function wqhelper_sidebar_floatbox($vargs = null) {
 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
@@ -165,6 +201,9 @@ if (!function_exists('wqhelper_sidebar_testimonial_box')) {function wqhelper_sid
  	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
 if (!function_exists('wqhelper_sidebar_floatmenuscript')) {function wqhelper_sidebar_floatmenuscript($vargs = null) {
  	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
+if (!function_exists('wqhelper_sidebar_stickykitscript')) {function wqhelper_sidebar_stickykitscript($vargs = null) {
+ 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
+
 
 // Dashboard Feed Caller Functions
 // -------------------------------
@@ -194,46 +233,60 @@ if (!function_exists('wqhelper_process_rss_feed')) {function wqhelper_process_rs
 // Add Wordquest Styles to Admin Footer
 // ------------------------------------
 if (!has_action('admin_footer','wqhelper_admin_styles')) {add_action('admin_footer','wqhelper_admin_styles');}
-if (!function_exists('wqhelper_admin_styles')) {function wqhelper_admin_styles($vargs = null) {
+if (!function_exists('wqhelper_admin_styles')) {
+ function wqhelper_admin_styles($vargs = null) {
 	remove_action('admin_footer','wordquest_admin_styles');
- 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
+ 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);
+ }
+}
 
 // Add Wordquest Scripts to Admin Footer
 // -------------------------------------
 if (!has_action('admin_footer','wqhelper_admin_scripts')) {add_action('admin_footer','wqhelper_admin_scripts');}
-if (!function_exists('wqhelper_admin_scripts')) {function wqhelper_admin_scripts($vargs = null) {
+if (!function_exists('wqhelper_admin_scripts')) {
+ function wqhelper_admin_scripts($vargs = null) {
 	remove_action('admin_footer','wordquest_admin_scripts');
- 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
+ 	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);
+ }
+}
 
 // --------------
 // AJAX Functions
 // --------------
 
-// AJAX for WordQuest Plugin Install
-if (!has_action('wp_ajax_wqhelper_install_plugin','wqhelper_install_plugin')) {
-	add_action('wp_ajax_wqhelper_install_plugin','wqhelper_install_plugin');
+// AJAX for reminder dismissal
+// ---------------------------
+// 1.6.5: added this AJAX function
+if (!has_action('wp_ajax_wqhelper_reminder_dismiss','wqhelper_reminder_dismiss')) {
+	add_action('wp_ajax_wqhelper_reminder_dismiss','wqhelper_reminder_dismiss');
 }
-if (!function_exists('wqhelper_install_plugin')) {function wqhelper_install_plugin($vargs = null) {
+if (!function_exists('wqhelper_reminder_dismiss')) {function wqhelper_reminder_dismiss($vargs = null) {
  	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
 
 // AJAX Load Category Feed
+// -----------------------
 if (!has_action('wp_ajax_wqhelper_load_feed_cat','wqhelper_load_feed_category')) {
 	add_action('wp_ajax_wqhelper_load_feed_cat','wqhelper_load_feed_category');
 }
 if (!function_exists('wqhelper_load_feed_category')) {function wqhelper_load_feed_category($vargs = null) {
  	global $wqcaller; return $wqcaller(__FUNCTION__,$vargs);} }
 
-// AJAX Update Sidebar Options
+// Update Sidebar Options
+// ----------------------
 // 1.6.0: ! caller exception ! use matching form version function here just in case...
-if (!has_action('wp_ajax_wqhelper_update_sidebar_options','wqhelper_update_sidebar_options')) {
-	add_action('wp_ajax_wqhelper_update_sidebar_options','wqhelper_update_sidebar_options');
+if (!has_action('wp_ajax_wqhelper_update_sidebar_boxes','wqhelper_update_sidebar_boxes')) {
+ 	add_action('wp_ajax_wqhelper_update_sidebar_boxes','wqhelper_update_sidebar_boxes');
 }
-if (!function_exists('wqhelper_update_sidebar_options')) {
- function wqhelper_update_sidebar_options() {
+
+if (!function_exists('wqhelper_update_sidebar_boxes')) {
+ function wqhelper_update_sidebar_boxes() {
  	if (!isset($_POST['wqhv'])) {return;} else {$wqhv = $_POST['wqhv'];}
  	$vfunc = 'wqhelper_update_sidebar_options_'.$wqhv;
- 	if (is_callable($vfunc)) {return $vfunc;}
- 	elseif (function_exists($vfunc)) {return call_user_func($vfunc);}
+
+ 	// 1.6.5: fix to function call method
+ 	global $wqfunctions;
+ 	if (is_callable($wqfunctions[$vfunc])) {$wqfunctions[$vfunc]();}
+ 	elseif (function_exists($vfunc)) {call_user_func($vfunc);}
  }
 }
 
@@ -252,83 +305,164 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	$wqfunctions[$vfuncname] = function() {
 
 	// count admin notices
-	global $wp_filter; $vadminnotices = 0; // print_r($wp_filter);
-	if (isset($wp_filter['admin_notices'])) {$vadminnotices = count($wp_filter['admin_notices']);}
-	if (is_network_admin()) {if (isset($wp_filter['network_admin_notices'])) {$vadminnotices = $vadminnotices + count($wp_filter['network_admin_notices']);} }
-	if (is_user_admin()) {if (isset($wp_filter['user_admin_notices'])) {$vadminnotices = $vadminnotices + count($wp_filter['user_admin_notices']);} }
-	if (isset($wp_filter['all_admin_notices'])) {$vadminnotices = $vadminnotices + count($wp_filter['all_admin_notices']);}
-	if ($vadminnotices == 0) {return;}
+	// global $wp_filter; $vnotices = 0; // print_r($wp_filter);
+	// if (isset($wp_filter['admin_notices'])) {$vadminnotices = $vnotices = count($wp_filter['admin_notices']);}
+	// if (is_network_admin()) {if (isset($wp_filter['network_admin_notices'])) {$vnetworknotices = count($wp_filter['network_admin_notices']); $vnotices = $vnotices + $vnetworknotices;} }
+	// if (is_user_admin()) {if (isset($wp_filter['user_admin_notices'])) {$vusernotices = count($wp_filter['user_admin_notices']); $vnotices = $vnotices + $vusernotices;} }
+	// if (isset($wp_filter['all_admin_notices'])) {$valladminnotices = count($wp_filter['all_admin_notices']); $vnotices = $vnotices + $valladminnotices;}
+	// if ($vnotices == 0) {return;}
 
-	echo "<script>function togglenoticebox() {divid = 'adminnoticewrap'; ";
-	echo "if (document.getElementById(divid).style.display == '') {document.getElementById(divid).style.display = 'none';} ";
-	echo "else {document.getElementById(divid).style.display = '';} } ";
+	// print_r($wp_filter['admin_notices']); print_r($wp_filter['all_admin_notices']);
+	// echo "<!-- Notices: ".$vadminnotices." - ".$vnetworknotices." - ".$vuseradminnotices." - ".$valladminnotices." -->";
+
+	echo "<script>function togglenoticebox() {divid = 'adminnoticewrap';
+	if (document.getElementById(divid).style.display == '') {
+		document.getElementById(divid).style.display = 'none'; document.getElementById('adminnoticearrow').innerHTML = '&#9662;';}
+	else {document.getElementById(divid).style.display = ''; document.getElementById('adminnoticearrow').innerHTML= '&#9656;';} } ";
 	// straight from /wp-admin/js/common.js... to move the notices if common.js is not loaded...
 	echo "jQuery(document).ready(function() {jQuery( 'div.updated, div.error, div.notice' ).not( '.inline, .below-h2' ).insertAfter( jQuery( '.wrap h1, .wrap h2' ).first() ); });";
 	echo "</script>";
 
-	echo '<div style="width:75%" id="adminnoticebox" class="postbox">';
-	echo '<h3 class="hndle" style="margin-left:20px;" onclick="togglenoticebox();"><span>&#9660; Admin Notices ('.$vadminnotices.')</span></h3>';
+	$vadminnotices = ''; // $vadminnotices = '('.$vnotices.')';
+	echo '<div style="width:680px" id="adminnoticebox" class="postbox">';
+	echo '<h3 class="hndle" style="margin:7px 14px;font-size:12pt;" onclick="togglenoticebox();">';
+	echo '<span id="adminnoticearrow">&#9662;</span> &nbsp; Admin Notices'.$vadminnotices.'</span></h3>';
 	echo '<div id="adminnoticewrap" style="display:none";><h2></h2></div></div>';
+
+	// echo '<div style="width:75%" id="adminnoticebox" class="postbox">';
+	// echo '<h3 class="hndle" style="margin-left:20px;" onclick="togglenoticebox();"><span>&#9660; Admin Notices ('.$vadminnotices.')</span></h3>';
+	// echo '<div id="adminnoticewrap" style="display:none";><h2></h2></div></div>';
  };
 }
 
-// Plugin Usage Reminder Notices
-// -----------------------------
-// 1.5.0: prototype, does nothing yet
+// Usage Reminder Notice Check
+// ---------------------------
+// 1.5.0: added reminder prototype that does nothing yet
+// 1.6.5: completed usage reminder notices
 $vfuncname = 'wqhelper_admin_notices_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
 	$wqfunctions[$vfuncname] = function() {
  	global $wordquestplugins;
- 	foreach ($wordquestplugins as $wqplugin) {
+ 	foreach ($wordquestplugins as $vpluginslug => $wqplugin) {
+ 		// 1.6.5: no reminders needed if pro version
+ 		if ($wqplugin['plan'] == 'premium') {return;}
  		$vpre = $wqplugin['settings'];
- 		$sidebaroptions = get_option($vpre.'_sidebar_options');
- 		if (isset($sidebaroptions['installdate'])) {
- 			$vinstalltime = @strtotime($sidebaroptions['installdate']);
+ 		$vsidebaroptions = get_option($vpre.'_sidebar_options');
+ 		// 1.6.5: no reminders if donation box has been turned off
+ 		if ( (isset($vsidebaroptions['donationboxoff'])) && ($vsidebaroptions['donationboxoff'] == 'checked') ) {return;}
+ 		if (isset($vsidebaroptions['installdate'])) {
+ 			$vreminder = false;
+ 			$vinstalltime = @strtotime($vsidebaroptions['installdate']);
  			$vtimesince = time() - $vinstalltime;
- 			if ($vtimesince > (30*24*60*60)) { // 30 day notice
- 				if (!isset($sidebaroptions['30daydismissed'])) {
- 					// TODO: add a donation/support/go pro reminder notice?
-
-				}
+ 			$vdayssince = floor($vtimesince / (24*60*60));
+ 			if ($vdayssince > 365) { // yearly notice
+ 				if (!isset($vsidebaroptions['365days'])) {$vreminder = '365';}
+ 			} elseif ($vdayssince > 90) { // 90 day notice
+ 				if (!isset($vsidebaroptions['90days'])) {$vreminder = '90';}
+ 			} elseif ($vdayssince > 30) { // 30 day notice
+ 				if (!isset($vsidebaroptions['30days'])) {$vreminder = '30';}
  			}
- 			if ($vtimesince > (90*24*60*60)) { // 90 day notice
- 				if (!isset($sidebaroptions['90daydismissed'])) {
- 					// TODO: add a donation/support/go pro reminder notice?
 
-				}
+ 			if ($vreminder) {
+				// add an admin reminder notice
+				global $wqreminder; $wqreminder[$vpluginslug] = $wqplugin;
+				$wqreminder[$vpluginslug]['days'] = $vdayssince;
+				$wqreminder[$vpluginslug]['notice'] = $vreminder;
+				add_action('admin_notices','wqhelper_reminder_notice');
  			}
+ 		} else {
+ 			$vsidebaroptions['installdate'] = date('Y-m-d');
+ 			updateoption($vpre.'_sidebar_options',$vsidebaroptions);
  		}
  	}
  };
 }
+
+// Usage Reminder Notice
+// ---------------------
+// 1.6.5: added reminder notice text
+$vfuncname = 'wqhelper_reminder_notice_'.$wqhv;
+if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
+	$wqfunctions[$vfuncname] = function() {
+		global $wqreminder, $wqurls;
+
+		foreach ($wqreminder as $vpluginslug => $vreminder) {
+			echo "<div class='updated notice is-dismissable' id='".$vpluginslug."-reminder-notice' style='line-height:20px;margin:0;'>";
+			echo "You've been enjoying ".$wqreminder[$vpluginslug]['title']." for ".$wqreminder[$vpluginslug]['days']." days. If you like it, here's some ways you can help make it better!<br>";
+
+			// Links: Supporter / Donate / Rate / Testimonial / Feedback / Development / Go Pro
+			echo "<table cellpadding='0' cellspacing='0' style='width:100%;'><tr><td>";
+			echo "<ul style='list-style:none;padding:0;margin:0;'>";
+			echo "<li style='display:inline-block;'><a href='".$wqurls['wq']."/contribute/?tab=supporterlevels' target=_blank>&rarr; ".__('Become a Supporter')."</a></li>";
+			echo "<li style='display:inline-block;margin-left:15px;'><a href='".$wqurls['wq']."/contribute/?plugin=".$vpluginslug."' target=_blank>&rarr; ".__('Donate')."</a></li>";
+			if (isset($wqreminder['wporgslug'])) {
+				echo "<li style='display:inline-block;margin-left:15px;'><a href='http://wordpress.org/support/view/plugin-reviews/".$vpluginslug."?rate=5#postform' target=_blank>&rarr; ".__('Rate')."</a></li>";
+			}
+			echo "<li style='display:inline-block;margin-left:15px;'><a href='".$wqurls['wq']."/contribute/?tab=testimonial' target=_blank>&rarr; ".__('Testimonial')."</a></li>";
+			echo "<li style='display:inline-block;margin-left:15px;'><a href='".$wqurls['wq']."/support/".$vpluginslug."' target=_blank>&rarr; ".__('Feedback')."</a></li>";
+			echo "<li style='display:inline-block;margin-left:15px;'><a href='".$wqurls['wq']."/contribute/?tab=development' target=_blank>&rarr; ".__('Development')."</a></li>";
+			// Pro Version plan link
+			if ( (isset($wqreminder['hasplans'])) && ($wqreminder['hasplans']) ) {
+				$vupgradeurl = admin_url('admin.php').'?page='.$wqreminder['slug'].'-pricing';
+				echo "<li style='display:inline-block;margin-left:15px;'><a href='".$vupgradeurl."'><b>&rarr; ".__('Go PRO')."</b></a></li>";
+			}
+			echo "</ul></td><td style='text-align:right;'>";
+			// make notice dismissable link
+			$vdismisslink = admin_url('admin-ajax.php').'?action=wqhelper_reminder_dismiss&slug='.$vpluginslug.'&notice='.$wqreminder[$vpluginslug]['notice'];
+			echo "<a href='".$vdismisslink."' target='wqdismissframe' style='text-decoration:none;' title='".__('Dismiss this Notice')."'>";
+			echo "<div class='dashicons dashicons-dismiss' style='font-size:16px;'></div></a>";
+			echo "</td></tr></table></div>";
+		}
+		echo "<iframe style='display:none;' src='javascript:void(0);' name='wqdismissframe' id='wqdimissframe'></iframe>";
+	};
+}
+
+// Reminder Dismisser
+// ------------------
+$vfuncname = 'wqhelper_reminder_dismiss_'.$wqhv;
+if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
+	$wqfunctions[$vfuncname] = function() {
+		if (!current_user_can('manage_options')) {return;}
+		$vpluginslug = $_REQUEST['slug']; $vnotice = $_REQUEST['notice'];
+		if ( ($vnotice != '30') && ($vnotice != '90') && ($vnotice != '365') ) {return;}
+		global $wordquestplugins; $vpre = $wordquestplugins[$vpluginslug]['settings'];
+		$vsidebaroptions = get_option($vpre.'_sidebar_options');
+		if ( (isset($vsidebaroptions[$vnotice.'days'])) && ($vsidebaroptions[$vnotice.'days'] == 'dismissed') ) {$vsidebaroptions[$vnotice.'days'] = '';}
+		else {$vsidebaroptions[$vnotice.'days'] = 'dismissed';}
+		update_option($vpre.'_sidebar_options',$vsidebaroptions);
+		echo "<script>parent.document.getElementById('".$vpluginslug."-reminder-notice').style.display = 'none';</script>";
+		exit;
+	};
+}
+
 
 // Get WordQuest Plugins Info
 // --------------------------
 $vfuncname = 'wqhelper_get_plugin_info_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
 	$wqfunctions[$vfuncname] = function() {
-	// 1.5.0: get plugin info (maximum twice daily)
-	// $vplugininfo = trim(get_transient('wordquest_plugin_info'));
-	if ( (!$vplugininfo) || ($vplugininfo == '') || (!is_array($vplugininfo)) ) {
-		$vbaseurl = "http://"."wordquest.org";
-		$vpluginsurl = $vbaseurl."/?get_plugins_info=yes";
-		$vargs = array('timeout' => 10);
-		$vplugininfo = wp_remote_get($vpluginsurl,$vargs);
-		if (!is_wp_error($vplugininfo)) {
-			$vplugininfo = $vplugininfo['body'];
-			// print_r($vplugininfo); // debug point
-			$vdataend = "*****END DATA*****";
-			if (strstr($vplugininfo,$vdataend)) {
-				$vpos = strpos($vplugininfo,$vdataend);
-				$vplugininfo = substr($vplugininfo,0,$vpos);
-				$vplugininfo = json_decode($vplugininfo,true);
-				set_transient('wordquest_plugin_info',$vplugininfo,(12*60*60));
-				// print_r($vplugininfo); // debug point
+		global $wqurls, $wqdebug;
+		// 1.5.0: get plugin info (maximum twice daily)
+		$vplugininfo = get_transient('wordquest_plugin_info');
+		if ($wqdebug) {$vplugininfo = '';} // clear transient for debugging
+		if ( (!$vplugininfo) || ($vplugininfo == '') || (!is_array($vplugininfo)) ) {
+			$vpluginsurl = $wqurls['wq'].'/?get_plugins_info=yes';
+			$vargs = array('timeout' => 15);
+			$vplugininfo = wp_remote_get($vpluginsurl,$vargs);
+			if (!is_wp_error($vplugininfo)) {
+				$vplugininfo = $vplugininfo['body'];
+				$vdataend = "*****END DATA*****";
+				if (strstr($vplugininfo,$vdataend)) {
+					$vpos = strpos($vplugininfo,$vdataend);
+					$vplugininfo = substr($vplugininfo,0,$vpos);
+					$vplugininfo = json_decode($vplugininfo,true);
+					set_transient('wordquest_plugin_info',$vplugininfo,(12*60*60));
+				} else {$vplugininfo = '';}
 			} else {$vplugininfo = '';}
-		} else {$vplugininfo = '';}
-	} else {$vplugininfo = '';}
-	return $vplugininfo;
- };
+		}
+		if ($wqdebug) {echo "<!-- Plugin Info: "; print_r($vplugininfo); echo " -->";}
+		return $vplugininfo;
+	};
 }
 
 // Version Specific Admin Page
@@ -337,7 +471,7 @@ $vfuncname = 'wqhelper_admin_page_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
 	$wqfunctions[$vfuncname] = function() {
 
-	global $wordquesthelper, $wordquestplugins;
+	global $wordquesthelper, $wordquestplugins, $wqurls;
 
 	echo '<div class="wrap">';
 
@@ -351,20 +485,55 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 		} else {document.getElementById(divid).style.display = '';}
 	}</script>";
 
-	echo '<style>#plugincolumn, #feedcolumn {display: inline-block; float:left; margin: 0 20px;}
-	#plugincolumn .postbox {max-width:350px;} #feedcolumn .postbox {max-width:350px;}
+	echo '<style>#plugincolumn, #feedcolumn {display: inline-block; float:left; margin: 0 5px;}
+	#plugincolumn .postbox {max-width:330px;} #feedcolumn .postbox {max-width:330px;}
 	#plugincolumn .postbox h2, #feedcolumn .postbox h2 {font-size: 16px; margin-top: 0; background-color: #E0E0EE; padding: 5px;}
 	#page-title a {text-decoration:none;} #page-title h2 {color: #3568A9;}
 	</style>';
 
+	// Floating Sidebar
+	// ----------------
+	// set 'plugin' values for sidebar
+	global $wordquestplugins, $wordquesthelper;
+	$wordquestplugins['wordquest']['version'] = $wordquesthelper;
+	$wordquestplugins['wordquest']['title'] = 'WordQuest Alliance';
+	$wordquestplugins['wordquest']['namespace'] = 'wordquest';
+	$wordquestplugins['wordquest']['settings'] = 'wq';
+	$wordquestplugins['wordquest']['plan'] = 'free';
+	$wordquestplugins['wordquest']['wporg'] = false;
+	$wordquestplugins['wordquest']['wporgslug'] = '';
+	$vargs = array('wordquest','special'); wqhelper_sidebar_floatbox($vargs);
+
+	// 1.6.5: replace floatmenu with stickykit
+	echo wqhelper_sidebar_stickykitscript();
+	echo '<style>#floatdiv {float:right;} #wpcontent, #wpfooter {margin-left:150px !important;}</style>';
+	echo '<script>jQuery("#floatdiv").stick_in_parent();</script>';
+	unset($wordquestplugins['wordquest']);
+
+	// echo wqhelper_sidebar_floatmenuscript();
+	// echo '<script language="javascript" type="text/javascript">
+	// floatingMenu.add("floatdiv", {targetRight: 10, targetTop: 20, centerX: false, centerY: false});
+	// function move_upper_right() {
+	//	floatingArray[0].targetTop=20;
+	//	floatingArray[0].targetBottom=undefined;
+	//	floatingArray[0].targetLeft=undefined;
+	//	floatingArray[0].targetRight=10;
+	//	floatingArray[0].centerX=undefined;
+	//	floatingArray[0].centerY=undefined;
+	// }
+	// move_upper_right();
+	// </script>
+
 	// Admin Page Title
 	// ----------------
-	$vwqurl = 'http://'.'wordquest.org';
-	$vwordquesticon = plugin_dir_url(__FILE__).'/images/wordquest.png';
+	$vwordquesticon = plugins_url('images/wordquest.png',__FILE__);
+	echo '<style>.wqlink {text-decoration:none;} .wqlink:hover {text-decoration:underline;}</style>';
 	echo '<table><tr><td width="20"></td><td><img src="'.$vwordquesticon.'"></td><td width="20"></td>';
-	echo '<td><div id="page-title"><a href="'.$vwqurl.'" target=_blank><h2>WordQuest Alliance</h2></a></div></td>';
-	echo '<td width="80"></td><td><h3>&rarr; <a href="'.$vwqurl.'/register/" target=_blank>Join the Alliance</a></h3></td>';
-	echo '<td width="50"></td><td><h3>&rarr; <a href="'.$vwqurl.'/login/" target=_blank>Login</a></h3></td>';
+	echo '<td><div id="page-title"><a href="'.$wqurls['wq'].'" target=_blank><h2>WordQuest Alliance</h2></a></div></td>';
+	echo '<td width="30"></td><td><h3>&rarr; <a href="'.$wqurls['wq'].'/register/" class="wqlink" target=_blank>'.__('Join').'</a></h3></td>';
+	echo '<td> / </td><td><h3><a href="'.$wqurls['wq'].'/login/"  class="wqlink" target=_blank>'.__('Login').'</a></h3></td>';
+	echo '<td width="20"></td><td><h3>&rarr; <a href="'.$wqurls['wq'].'/solutions/"  class="wqlink" target=_blank>'.__('Solutions').'</a></h3></td>';
+	echo '<td width="20"></td><td><h3>&rarr; <a href="'.$wqurls['wq'].'/contribute/"  class="wqlink" target=_blank>'.__('Contribute').'</a></h3></td>';
 	echo '</tr></table>';
 
 	// Output Plugins Column
@@ -378,44 +547,20 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	// Wordquest sidebar 'plugin' box
 	// ------------------------------
 	function wq_sidebar_plugin_footer() {
+		global $wqurls;
+		$viconurl = plugins_url('images/wordquest.png',__FILE__);
 		echo '<div id="pluginfooter"><div class="stuffbox" style="width:250px;background-color:#ffffff;"><h3>Source Info</h3><div class="inside">';
 		echo "<center><table><tr>";
-		echo "<td><a href='".$vwqurl."/' target='_blank'><img src='".plugin_dir_url(__FILE__)."images/wordquest.png' border=0></a></td></td>";
+		echo "<td><a href='".$wqurls['wq']."' target='_blank'><img src='".$viconurl."' border=0></a></td></td>";
 		echo "<td width='14'></td>";
-		echo "<td><a href='".$vwqurl."/' target='_blank'>WordQuest Alliance</a><br>";
-		echo "<a href='".$vwqurl."/plugins/' target='_blank'><b>&rarr; WordQuest Plugins</b></a><br>";
-		echo "<a href='http://"."pluginreview.net/directory/' target='_blank'>&rarr; Plugin Directory</a></td>";
+		echo "<td><a href='".$wqurls['wq']."' target='_blank'>WordQuest Alliance</a><br>";
+		echo "<a href='".$wqurls['wq']."/plugins/' target='_blank'><b>&rarr; WordQuest Plugins</b></a><br>";
+		echo "<a href='".$wqurls['prn']."/directory/' target='_blank'>&rarr; Plugin Directory</a></td>";
 		echo "</tr></table></center>";
 		echo '</div></div></div>';
 	}
 
-	// Floating Sidebar
-	// ----------------
-	// set 'plugin' values for sidebar
-	global $wordquestplugins, $wordquesthelper;
-	$wordquestplugins['wordquest']['version'] = $wordquesthelper;
-	$wordquestplugins['wordquest']['title'] = 'WordQuest Alliance';
-	$wordquestplugins['wordquest']['namespace'] = 'wordquest';
-	$wordquestplugins['wordquest']['settings'] = 'wq';
-	$wordquestplugins['wordquest']['plan'] = 'free';
-
-	// $vargs = array('patsee','wp-bugbot','free','wp-bugbot','special','WP BugBot',$vpatseeversion);
-	$vargs = array('wordquest','special'); wqhelper_sidebar_floatbox($vargs);
-
-	echo wqhelper_sidebar_floatmenuscript();
-
-	echo '<script language="javascript" type="text/javascript">
-	floatingMenu.add("floatdiv", {targetRight: 10, targetTop: 20, centerX: false, centerY: false});
-	function move_upper_right() {
-		floatingArray[0].targetTop=20;
-		floatingArray[0].targetBottom=undefined;
-		floatingArray[0].targetLeft=undefined;
-		floatingArray[0].targetRight=10;
-		floatingArray[0].centerX=undefined;
-		floatingArray[0].centerY=undefined;
-	}
-	move_upper_right();
-	</script></div>';
+	echo '</div>';
 
 	// hidden iframe for plugin actions
 	echo '<iframe id="pluginactionframe" src="javascript:void(0);" style="display:none;"></iframe>';
@@ -430,61 +575,59 @@ $vfuncname = 'wqhelper_admin_plugins_column_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
 	$wqfunctions[$vfuncname] = function($vargs) {
 
-	global $wordquesthelper, $wordquestplugins;
+	global $wordquesthelper, $wordquestplugins, $wqurls, $wqdebug;
 
 	// Plugin Action Select Javascript
 	// -------------------------------
 	// note: some options unused/untested here...
-	$vwqurl = 'http://'.'wordquest.org';
 	echo "<script>
 	function dopluginaction(pluginslug) {
 		var selectelement = document.getElementById(pluginslug+'-action');
 		var actionvalue = selectelement.options[selectelement.selectedIndex].value;
-		var linkelement = document.getElementById(pluginslug+'-link');
-
-		if (actionvalue == 'settings') {linkelement.target = '_self';
-			linkelement.href = '".admin_url('admin.php')."?page='+pluginslug;
-		}
-		if (actionvalue == 'update') {linkelement.target = '_self';
-			alert(document.getElementById(pluginslug+'-updatelink').value);
-			linkelement.href = document.getElementById(pluginslug+'-updatelink').value;
-		}
-		if (actionvalue == 'activate') {linkelement.target = '_self';
-			alert(document.getElementById(pluginslug+'-activatelink').value);
-			linkelement.href = document.getElementById(pluginslug+'-activatelink').value;
-		}
-		if (actionvalue == 'install') {linkelement.target = '_self';
-			linkelement.href = '".admin_url('admin-ajax.php')."?action=wqhelper_install_plugin&plugin='+pluginslug;
-		}
-		if (actionvalue == 'support') {linkelement.target = '_blank';
-			linkelement.href = '".admin_url('admin.php')."?page='+pluginslug+'-wp-support-forum';
-		}
-		if (actionvalue == 'donate') {linkelement.target = '_blank';
-			linkelement.href = '".$vwqurl."/contribute/?plugin='+pluginslug;
-		}
-		if (actionvalue == 'rate') {linkelement = '_blank';
-			linkelement.href = '".$vwqurl."/support/view/plugin-reviews/'+pluginslug+'?rate=5#postform';
-		}
-		if (actionvalue == 'contact') {linkelement.target = '_self';
-			linkelement.href = '".admin_url('admin.php')."?page='+pluginslug+'-contact';
-		}
-		if (actionvalue == 'home') {linkelement.target = '_blank';
-			linkelement.href = '".$vwqurl."/plugins/'+pluginslug+'/';
-		}
-		if (actionvalue == 'upgrade') {linkelement.target = '_self';
-			linkelement.href = '".admin_url('admin.php')."?page='+pluginslug+'-pricing';
-		}
+		var linkel = document.getElementById(pluginslug+'-link');
+		var adminpageurl = '".admin_url('admin.php')."';
+		if (actionvalue == 'settings') {linkel.target = '_self'; linkel.href = adminpageurl+'?page='+pluginslug;}
+		if (actionvalue == 'update') {linkel.target = '_self'; linkel.href = document.getElementById(pluginslug+'-update-link').value;}
+		if (actionvalue == 'activate') {linkel.target = '_self'; linkel.href = document.getElementById(pluginslug+'-activate-link').value;}
+		if (actionvalue == 'install') {linkel.target = '_self';	linkel.href = document.getElementById(pluginslug+'-install-link').value;}
+		if (actionvalue == 'support') {linkel.target = '_blank'; linkel.href = adminpageurl+'?page='+pluginslug+'-wp-support-forum';}
+		if (actionvalue == 'donate') {linkel.target = '_blank';	linkel.href = '".$wqurls['wq']."/contribute/?plugin='+pluginslug;}
+		if (actionvalue == 'testimonial') {linkel.target = '_blank'; linkel.href = '".$wqurls['wq']."/contribute/?tab=testimonial';}
+		if (actionvalue == 'rate') {linkel = '_blank'; linkel.href = 'http://wordpress.org/support/view/plugin-reviews/'+pluginslug+'?rate=5#postform';}
+		if (actionvalue == 'development') {linkel.target = '_blank'; linkel.href= '".$wqurls['wq']."/contribute/?tab=development';}
+		if (actionvalue == 'contact') {linkel.target = '_self'; linkel.href = adminpageurl+'?page='+pluginslug+'-contact';}
+		if (actionvalue == 'home') {linkel.target = '_blank'; linkel.href = '".$wqurls['wq']."/plugins/'+pluginslug+'/';}
+		if (actionvalue == 'upgrade') {linkel.target = '_self'; linkel.href = adminpageurl+'?page='+pluginslug+'-pricing';}
+		if (actionvalue == 'account') {linkel.target = '_self'; linkel.href = adminpageurl+'?page='+pluginslug+'-account';}
 	}</script>";
 
 	echo "<style>.pluginlink {text-decoration:none;} .pluginlink:hover {text-decoration:underline;}</style>";
 
+	// Get Installed and Active Plugin Slugs
+	// -------------------------------------
+	$vi = 0; foreach ($wordquestplugins as $vpluginslug => $vvalues) {$vpluginslugs[$vi] = $vpluginslug; $vi++;}
+	// if ($wqdebug) {echo "<!-- Active Wordquest Plugins: "; print_r($vpluginslugs); echo " -->";}
+
+	// Get All Installed Plugins Info
+	// ------------------------------
+	$vi = 0; $vinstalledplugins = get_plugins();
+	foreach ($vinstalledplugins as $vpluginfile => $vvalues) {$vinstalledslugs[$vi] = sanitize_title($vvalues['Name']); $vi++;}
+	// if ($wqdebug) {echo "<!-- Installed Plugins: "; print_r($vinstalledplugins); echo " -->";}
+	// if ($wqdebug) {echo "<!-- Installed Plugin Slugs: "; print_r($vinstalledslugs); echo " -->";}
+
+	// Get Plugin Update Info
+	// ----------------------
+	$vi = 0; $vupdateplugins = get_site_transient('update_plugins');
+	foreach ($vupdateplugins->response as $vpluginfile => $vvalues) {$vpluginupdates[$vi] = $vvalues->slug; $vi++;}
+	// if ($wqdebug) {echo "<!-- Plugin Updates: "; print_r($vupdateplugins); echo " -->";}
+	// if ($wqdebug) {echo "<!-- Plugin Update Slugs: "; print_r($vpluginupdates); echo " -->";}
 
 	// Get Available Plugins from WordQuest.org
 	// ----------------------------------------
 	$vplugininfo = wqhelper_get_plugin_info();
 
 	// process plugin info
-	$vi = 0; $vwqplugins = array(); $vwqpluginslugs = array(); $vreleasedcount = 0;
+	$vi = 0; $vwqplugins = array(); $vwqpluginslugs = array();
 	if (is_array($vplugininfo)) {
 		foreach ($vplugininfo as $vplugin) {
 			// print_r($vplugin); // debug point
@@ -494,54 +637,48 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 				if (isset($vplugin['home'])) {$vwqplugins[$vpluginslug]['home'] = $vplugin['home'];}
 				if (isset($vplugin['description'])) {$vwqplugins[$vpluginslug]['description'] = $vplugin['description'];}
 				if (isset($vplugin['icon'])) {$vwqplugins[$vpluginslug]['icon'] = $vplugin['icon'];}
-				if (isset($vplugin['cats'])) {$vwqplugins[$vpluginslug]['cats'] = $vplugin['cats'];}
-				if (isset($vplugin['tags'])) {$vwqplugins[$vpluginslug]['tags'] = $vplugin['tags'];}
 				if (isset($vplugin['paidplans'])) {$vwqplugins[$vpluginslug]['paidplans'] = $vplugin['paidplans'];}
 				if (isset($vplugin['package'])) {$vwqplugins[$vpluginslug]['package'] = $vplugin['package'];}
-				// 1.6.0: check if released
-				if (isset($vplugin['releasedate'])) {
-					$vwqplugins[$vpluginslug]['releasedate'] = $vplugin['releasedate'];
-					if (strtotime($vplugin['releasedate']) < time()) {$vwqplugins[$vpluginslug]['released'] = 'no';}
-					else {$vwqplugins[$vpluginslug]['released'] = 'yes'; $vreleasedcount++;}
-				}
+
+				if (isset($vplugin['tags'])) {$vwqplugins[$vpluginslug]['tags'] = $vplugin['tags'];}
+				if (isset($vplugin['cats'])) {$vwqplugins[$vpluginslug]['cats'] = $vplugin['cats'];}
+
+				// 1.6.5: check release date and  status
+				if (isset($vplugin['releasedate'])) {$vwqplugins[$vpluginslug]['releasedate'] = $vplugin['releasedate'];}
+				if (isset($vplugin['releasestatus'])) {$vwqplugins[$vpluginslug]['releasestatus'] = $vplugin['releasestatus'];}
+				else {$vwqplugins[$vpluginslug]['releasestatus'] = 'Upcoming';}
+
+				if (in_array($vpluginslug,$vinstalledslugs)) {$vwqplugins[$vpluginslug]['installed'] = 'yes';}
+				else {$vwqplugins[$vpluginslug]['installed'] = 'no';}
+
 				// check for latest release plugin
 				if ( (isset($vplugin['latestrelease'])) && ($vplugin['latestrelease'] == 'yes') ) {
-					$vplugin['latestrelease'] = 'yes'; $vlatestrelease = $vplugin;
+					$vwqplugins[$vpluginslug]['latestrelease'] = 'yes';
+					$vlatestrelease = $vwqplugins[$vpluginslug];
+					$vlatestrelease['slug'] = $vpluginslug;
+				}
+				// 1.6.5: check for next plugin release
+				if ( (isset($vplugin['nextrelease'])) && ($vplugin['nextrelease'] == 'yes') ) {
+					$vwqplugins[$vpluginslug]['nextrelease'] = 'yes';
+					$vnextrelease = $vwqplugins[$vpluginslug];
+					$vnextrelease['slug'] = $vpluginslug;
 				}
 			}
 		}
 	}
-	// print_r($vwqpluginslugs); // debug point
-	// print_r($vwqplugins); // debug point
+	// if ($wqdebug) {echo "<!-- WQ Plugin Slugs: "; print_r($vwqpluginslugs); echo " -->";}
+	if ($wqdebug) {echo "<!-- WQ Plugins: "; print_r($vwqplugins); echo " -->";}
 
-	// Get Installed and Active Plugin Slugs
-	// -------------------------------------
-	$vi = 0;
-	foreach ($wordquestplugins as $vpluginslug => $vvalues) {
-		$vpluginslugs[$vi] = $vpluginslug; $vi++;
-	}
-	// echo "Wordquest Plugins: "; print_r($vpluginslugs); // debug point
+	// maybe set Plugin Release Info
+	// -----------------------------
+	global $wqreleases;
+	if (isset($vlatestrelease)) {$wqreleases['latest'] = $vlatestrelease;}
+	if (isset($vnextrelease)) {$wqreleases['next'] = $vnextrelease;}
 
-	// Get All Installed Plugins Info
-	// ------------------------------
-	$vi = 0; $vinstalledplugins = get_plugins();
-	foreach ($vinstalledplugins as $vpluginfile => $vvalues) {
-		// yep this is actually the correct way to generate the slug...
-		$vinstalledslugs[$vi] = sanitize_title($vvalues['Name']); $vi++;
-	}
-	// echo "Installed Plugins: "; print_r($vinstalledplugins); // debug point
-	// echo "Installed Plugin Slugs: "; print_r($vinstalledslugs); // debug point
-
-	// Get Plugin Update Info
-	// ----------------------
-	$vi = 0; $vupdateplugins = get_site_transient('update_plugins');
-	foreach ($vupdateplugins->response as $vpluginfile => $vvalues) {
-		$vpluginupdates[$vi] = $vvalues->slug; $vi++;
-	}
-	// echo "Plugin Updates: "; print_r($vupdateplugins); // debug point
-	// echo "Plugin Update Slugs: "; print_r($vpluginupdates); // debug point
-
-	$vplugins = array(); $vi = 0; $vj = 0;
+	// get Installed Wordquest Plugin Data
+	// -----------------------------------
+	$vplugins = array(); $vinactiveplugins = array();
+	$vi = 0; $vj = 0;
 	foreach ($vinstalledplugins as $vpluginfile => $vvalues) {
 		$vpluginslug = sanitize_title($vvalues['Name']);
 		$vpluginfiles[$vpluginslug] = $vpluginfile;
@@ -565,71 +702,54 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 			$vi++;
 		}
 	}
-	// echo "Plugin Info: "; print_r($vplugins); // debug poing
-	// echo "Inactive Plugins: "; print_r($vinactiveplugins); // debug point
+	// if ($wqdebug) {echo "<!-- Plugin Data: "; print_r($vplugins); echo " -->";}
+	// if ($wqdebug) {echo "<!-- Inactive Plugins: "; print_r($vinactiveplugins); echo " -->";}
 
-	// ...also check if the BioShip Theme is installed
+	// check if BioShip Theme installed
+	// --------------------------------
 	$vthemes = wp_get_themes(); $vbioshipinstalled = false;
 	foreach ($vthemes as $vtheme) {if ($vtheme->stylesheet == 'bioship') {$vbioshipinstalled = true;} }
 
-	// ? TODO ? Get Recommended Plugins ?
-	// $vrecommended = array();
-
 	echo '<div id="plugincolumn">';
-
-		// Latest Release
-		// --------------
-		$boxid = 'wordquestlatest'; $boxtitle = 'Latest Release';
-		if (is_array($vlatestrelease)) {
-			echo '<div id="'.$boxid.'" class="postbox">';
-			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-			echo '<div class="inside" id="'.$boxid.'-inside"><table>';
-			echo "<table><tr><td><img src='".$vlatestrelease['icon']."'></td><td width='10'></td>";
-			echo "<td>".$vlatestrelease['description']."<br><br>";
-			echo "<a href='".$vlatestrelease['home']."' target=_blank>&rarr; ".$vlatestrelease['title']."</a>";
-			echo "</td></tr></table>";
-			echo '</table></div></div>';
-		}
 
 		// Active Plugin Panel
 		// -------------------
-		$boxid = 'wordquestactive'; $boxtitle = 'Active WordQuest Plugins';
+		$boxid = 'wordquestactive'; $boxtitle = __('Active WordQuest Plugins');
 		echo '<div id="'.$boxid.'" class="postbox">';
 		echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-		echo '<div class="inside" id="'.$boxid.'-inside"><table>';
+		echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;"><table>';
 		foreach ($wordquestplugins as $vpluginslug => $vplugin) {
-			if ($vpluginslug != 'bioship') { // filter out themes
-				echo "<form id='".$vpluginslug."-form' target=_self method='get'>";
+			if ($vpluginslug != 'bioship') { // filter out theme here
 				if (in_array($vpluginslug,$vpluginupdates)) {
-					$vupdatelink = wp_nonce_url(admin_url('update.php')."?action=upgrade-plugin&plugin=".$vpluginfiles[$vpluginslug]);
-					echo "<input type='hidden' id='".$vpluginslug."-updatelink' value='".$vupdatelink."'>";
+					$vupdatelink = wp_nonce_url(admin_url('update.php').'?action=upgrade-plugin&plugin='.$vpluginfiles[$vpluginslug],'upgrade-plugin_'.$vpluginfiles[$vpluginslug]);
+					echo "<input type='hidden' id='".$vpluginslug."-update-link' value='".$vupdatelink."'>";
 				}
-				echo "<tr><td><a href='".$vplugin['home']."' class='pluginlink' target=_blank>";
+				echo "<tr><td><a href='".$wqurls['wq']."/plugins/".$vpluginslug."' class='pluginlink' target=_blank>";
 				echo $vplugin['title']."</a></td><td width='20'></td>";
 				echo "<td>".$vplugin['version']."</td><td width='20'></td>";
 
 				echo "<td><select name='".$vpluginslug."-action' id='".$vpluginslug."-action' style='font-size:8pt;'>";
 				if (in_array($vpluginslug,$vpluginupdates)) {
-					echo "<option value='update' selected='selected'>Update</option><option value='settings'>Settings</option>";
-				} else {echo "<option value='settings' selected='selected'>Settings</option>";}
+					echo "<option value='update' selected='selected'>".__('Update')."</option>";
+					echo "<option value='settings'>".__('Settings')."</option>";
+				} else {echo "<option value='settings' selected='selected'>".__('Settings')."</option>";}
 
-				echo "<option value='donate'>Donate</option>";
-				// echo "<option value='contribute'>Contribute</option>";
-				echo "<option value='support'>Support</option>";
-				if ($vplugin['plan'] == 'premium') {echo "<option value='contact'>Contact</option>";}
-				if (isset($vplugin['wporgslug'])) {echo "<option value='Rate'>Rate</option>";}
+				echo "<option value='donate'>".__('Donate')."</option>";
+				echo "<option value='testimonial'>".__('Testimonial')."</option>";
+				echo "<option value='support'>".__('Support')."</option>";
+				echo "<option value='development'>".__('Development')."</option>";
+				if (isset($vplugin['wporgslug'])) {echo "<option value='Rate'>".__('Rate')."</option>";}
 
-				// ? TODO ? check for Premium Plans ?
-				// if ($vpaidplans) {
-				//  // well, not if already premium
-				//	if ($vplugin['plan'] != 'premium') {echo "<option value='gopro'>Go PRO!</option>";}
-				//	else {echo "<option value='account'>Account</option>";}
-				// }
+				// check for Pro Plan availability
+				// if ($vplugin['plan'] == 'premium') {echo "<option value='contact'>Contact</option>";}
+				if ( (isset($wordquestplugins[$vpluginslug]['hasplans'])) && ($wordquestplugins[$vpluginslug]['hasplans']) ) {
+					if ($vplugin['plan'] != 'premium') {echo "<option style='font-weight:bold;' value='upgrade'>Go PRO!</option>";}
+					else {echo "<option value='account'>Account</option>";}
+				}
 
 				echo "</select></td><td width='20'></td>";
 				echo "<td><a href='javascript:void(0);' target=_blank id='".$vpluginslug."-link' onclick='dopluginaction(\"".$vpluginslug."\");'>";
-				echo "<input class='button-secondary' type='button' value='Go'></a></td>";
-				echo "</tr></form>";
+				echo "<input class='button-secondary' type='button' value='".__('Go')."'></a></td></tr>";
 			}
 		}
 		echo '</table></div></div>';
@@ -637,121 +757,151 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 		// Inactive Plugin Panel
 		// ---------------------
 		if (count($vinactiveplugins) > 0) {
-			$boxid = 'wordquestinactive'; $boxtitle = 'Inactive WordQuest Plugins';
+			$boxid = 'wordquestinactive'; $boxtitle = __('Inactive WordQuest Plugins');
 			echo '<div id="'.$boxid.'" class="postbox">';
 			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-			echo '<div class="inside" id="'.$boxid.'-inside"><table>';
+			echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;"><table>';
 			foreach ($vinactiveplugins as $vinactiveplugin) {
-				echo "<form id='".$vinactiveplugin."-form' target=_self method='get'>";
-				$vactivatelink = wp_nonce_url(admin_url('plugins.php')."?action=activate&plugin=".$vpluginfiles[$vinactiveplugin]);
-				echo "<input type='hidden' id='".$vinactiveplugin."-activatelink' value='".$vactivatelink."'>";
+				$vactivatelink = wp_nonce_url(admin_url('plugins.php').'?action=activate&plugin='.$vpluginfiles[$vinactiveplugin],'activate-plugin_'.$vpluginfiles[$vinactiveplugin]);
+				echo "<input type='hidden' id='".$vinactiveplugin."-activate-link' value='".$vactivatelink."'>";
 				if (in_array($vinactiveplugin,$vpluginupdates)) {
-					$vupdatelink = wp_nonce_url(admin_url('update.php')."?action=upgrade-plugin&plugin=".$vpluginfiles[$vinactiveplugin]);
-					echo "<input type='hidden' id='".$vinactiveplugin."-updatelink' value='".$vupdatelink."'>";
+					$vupdatelink = wp_nonce_url(admin_url('update.php').'?action=upgrade-plugin&plugin='.$vpluginfiles[$vinactiveplugin],'upgrade-plugin_'.$vpluginfiles[$vinactiveplugins]);
+					echo "<input type='hidden' id='".$vinactiveplugin."-update-link' value='".$vupdatelink."'>";
 				}
 				echo "<tr><td><a href='".$vwqplugins[$vinactiveplugin]['home']."' class='pluginlink' target=_blank>";
 				echo $vwqplugins[$vinactiveplugin]['title']."</a></td><td width='20'></td>";
 				echo "<td>".$vinactiveversions[$vinactiveplugin]."</td><td width='20'></td>";
 				echo "<td><select name='".$vinactiveplugin."-action' id='".$vinactiveplugin."-action' style='font-size:8pt;'>";
 				if (in_array($vinactiveplugin,$vpluginupdates)) {
-					echo "<option value='update' selected='selected'>Update</option><option value='activate'>Activate</option>";
-				} else {echo "<option value='activate' selected='selected'>Activate</option>";}
+					echo "<option value='update' selected='selected'>".__('Update')."</option>";
+					echo "<option value='activate'>".__('Activate')."</option>";
+				} else {echo "<option value='activate' selected='selected'>".__('Activate')."</option>";}
 				echo "</select></td><td width='20'></td>";
 				echo "<td><a href='javascript:void(0);' target=_blank id='".$vinactiveplugin."-link' onclick='dopluginaction(\"".$vinactiveplugin."\");'>";
-				echo "<input class='button-secondary' type='button' value='Go'></a></td>";
-				echo "</tr></form>";
+				echo "<input class='button-secondary' type='button' value='".__('Go')."'></a></td>";
+				echo "</tr>";
 			}
 			echo '</table></div></div>';
 		}
 
-		// Not Installed Plugin Panel
-		// --------------------------
-		if ( count($vplugins) != count($vwqplugins) ) {
-			$boxid = 'wordquestavailable'; $boxtitle = 'Available WordQuest Plugins';
-			echo '<div id="'.$boxid.'" class="postbox">';
-			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-			echo '<div class="inside" id="'.$boxid.'-inside"><table>';
+		$vreleasedplugins = array(); $vunreleasedplugins = array();
+		if ( count($vwqplugins) > count($wordquestplugins) ) {
 			foreach ($vwqplugins as $vpluginslug => $vwqplugin) {
-				if (!in_array($vpluginslug,$vinstalledslugs)) {
-					echo "<form id='".$vpluginslug."-form' target=_self method='get'>";
-					echo "<tr><td><a href='".$vwqplugin['home']."' class='pluginlink' target=_blank>";
-					echo $vwqplugin['title']."</a></td><td width='20'></td>";
-					echo "<td>".$vwqplugin['version']."</td><td width='20'></td>";
-					// 1.6.0: display when released or release date
-					if ($vwqplugin['released'] == 'yes') {
-						echo "<td><select name='".$vpluginslug."-action' id='".$vpluginslug."-action' style='font-size:8pt;'>";
-						if (is_array($vwqplugin['package'])) {
-							echo "<option value='install' selected='selected'>Install Now</option>";
-							echo "<option value='home'>Read More</option>";
-						} else {
-							// oops, installation Package unavailable (404)
-							echo "<option value='home'>Plugin Home</option>";
-						}
-						echo "</select></td>";
-						echo "<td width='20'></td>";
-						echo "<td><a href='javascript:void(0);' target=_blank id='".$vpluginslug."-link' onclick='dopluginaction(\"".$vpluginslug."\");'>";
-						echo "<input class='button-secondary' type='button' value='Go'></a></td>";
-					} else {
-						echo "<td colspan='3'>Available ".date('jS F',strtotime($vwqplugin['releasedate']))."</td>";
+				if ( (!in_array($vpluginslug,$vinstalledslugs)) && (!in_array($vpluginslug,$vinactiveplugins)) ) {
+					if ($vwqplugin['releasestatus'] == 'Released') {$vreleasedplugins[$vpluginslug] = $vwqplugin;}
+					else {
+						$vreleasetime = strtotime($vwqplugin['releasedate']);
+						$vwqplugin['slug'] = $vpluginslug;
+						$vunreleasedplugins[$vreleasetime] = $vwqplugin;
 					}
-					echo "</tr></form>";
 				}
 			}
-			echo '</table></div></div>';
 		}
 
-		// BioShip Theme Recommendation
-		// ----------------------------
-		$boxid = 'bioship'; $boxtitle = 'BioShip Theme Framework';
+		// Available Plugin Panel
+		// ----------------------
+		if (count($vreleasedplugins) > 0) {
+			if ($wqdebug) {echo "<!-- Released Plugins: "; print_r($vreleasedplugins); echo " -->";}
+			$boxid = 'wordquestavailable'; $boxtitle = __('Available WordQuest Plugins');
+			echo '<div id="'.$boxid.'" class="postbox">';
+			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
+			echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;"><table>';
+			foreach ($vreleasedplugins as $vpluginslug => $vwqplugin) {
+				// 1.6.5: add separate install link URL for each plugin for nonce checking
+				$vinstalllink = wp_nonce_url(admin_url('update.php')."?action=wordquest_plugin_install&plugin=".$vpluginslug,'plugin-upload');
+				echo "<input type='hidden' name='".$vpluginslug."-install-link' value='".$vinstalllink."'>";
+
+				echo "<tr><td><a href='".$vwqplugin['home']."' class='pluginlink' target=_blank>";
+				echo $vwqplugin['title']."</a></td><td width='20'></td>";
+				// echo "<td>".$vwqplugin['version']."</td><td width='20'></td>";
+
+				echo "<td><select name='".$vpluginslug."-action' id='".$vpluginslug."-action' style='font-size:8pt;'>";
+				if (is_array($vwqplugin['package'])) {
+					echo "<option value='install' selected='selected'>".__('Install Now')."</option>";
+					echo "<option value='home'>".__('Plugin Home')."</option>";
+				} else {
+					// oops, installation package currently unavailable (404)
+					echo "<option value='home' selected='selected'>".__('Plugin Home')."</option>";
+				}
+				echo "</select></td><td width='20'></td>";
+				echo "<td><a href='javascript:void(0);' target=_blank id='".$vpluginslug."-link' onclick='dopluginaction(\"".$vpluginslug."\");'>";
+				echo "<input class='button-secondary' type='button' value='".__('Go')."'></a></td></tr>";
+			}
+			echo "</table></div></div>";
+		}
+
+		// Upcoming Plugin Panel
+		// ---------------------
+		if (count($vunreleasedplugins) > 0) {
+			ksort($vunreleasedplugins);
+			if ($wqdebug) {echo "<!-- Unreleased Plugins: "; print_r($vunreleasedplugins); echo " -->";}
+			$boxid = 'wordquestupcoming'; $boxtitle = __('Upcoming WordQuest Plugins');
+			echo '<div id="'.$boxid.'" class="postbox">';
+			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
+			echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;"><table>';
+			foreach ($vunreleasedplugins as $vreleasetime => $vwqplugin) {
+				// $vpluginslug = $vwqplugin['slug'];
+				echo "<tr><td><a href='".$vwqplugin['home']."' class='pluginlink' target=_blank>";
+				echo $vwqplugin['title']."</a></td>";
+				echo "<td><span style='font-size:9pt;'>";
+				echo __('Expected').': '.date('jS F Y',$vreleasetime);
+				echo "</span></td></tr>";
+			}
+			echo "</table></div></div>";
+		}
+
+		// BioShip Theme
+		// -------------
+		$boxid = 'bioship'; $boxtitle = __('BioShip Theme Framework');
 		echo '<div id="'.$boxid.'" class="postbox">';
 		echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-		echo '<div class="inside" id="'.$boxid.'-inside"><table>';
-		echo "<tr><td><center>";
+		echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;"><table><tr><td><center>';
 
 		if ($vbioshipinstalled) {
 			// check if BioShip Theme is active...
 			$vtheme = wp_get_theme();
 			if ($vtheme->stylesheet == 'bioship') {
-				echo "Sweet! You are using the <b>BioShip Theme</b>.";
+				echo __('Sweet! You are using').' <b>'.__('BioShip Theme').'</b>. '.__('Good choice!');
+				// TODO: add Theme Options Links here?
 			} elseif ( (is_child_theme()) && ($vtheme->template == 'bioship') ) {
-				echo "Groovy. You're using <b>BioShip Framework</b>!<br>";
-				echo "Your Child Theme is <b>".$vtheme->Name."</b><br><br>";
+				echo __('Groovy. You are using').' <b>'.__('BioShip Framework').'</b>!<br>';
+				echo __('Your Child Theme is').' <b>'.$vtheme->Name.'</b><br><br>';
 			} else {
-				echo "Looks like you have BioShip installed!<br>";
-				echo "...but it is not yet your active theme.<br><br>";
+				echo __('Looks like you have BioShip installed!').'<br>';
+				echo '...'.__('but it is not yet your active theme.').'<br><br>';
 
 				// BioShip Theme activation link...
-				$vwpnonce = wp_create_nonce('switch-theme_bioship');
-				$vactivatelink = 'themes.php?action=activate&stylesheet='.$vnewchildslug.'&_wpnonce='.$vwpnonce;
-				echo "<a href='".$vactivatelink."'>Click here to activate it now</a>.<br><br>";
+				$vactivatelink = wp_nonce_url(admin_url('themes.php').'?action=activate&stylesheet='.$vnewchildslug,'switch-theme_bioship');
+				echo '<a href="'.$vactivatelink.'">'.__('Click here to activate it now').'</a>.<br><br>';
 
 				// Check for Theme Test Drive
 				echo "<div id='testdriveoptions'>";
 				if (function_exists('themedrive_determine_theme')) {
+					// TODO: a better check here, this actually makes no sense
 					if (class_exists('TitanFramework')) {
 						$vtestdrivelink = admin_url('admin.php').'?page=bioship_options&theme=bioship';
 					} elseif (function_exists('OptionsFramework_Init')) {
 						$vtestdrivelink = admin_url('themes.php').'?page=options-framework&theme=bioship';
 					} else {$vtestdrivelink = admin_url('customize.php').'?theme=bioship';}
-					echo "Or, <a href='".$vtestdrivelink."'>take it for a Theme Test Drive</a>.";
+					echo __('or').', <a href="'.$vtestdrivelink.'">'.__('take it for a Theme Test Drive').'</a>.';
+				} elseif (in_array('theme-test-drive',$vinstalledplugins)) {
+					// Theme Test Drive plugin activation link
+					$vactivatelink = admin_url('plugins.php').'?action=activate&plugin='.urlencode('theme-test-drive/themedrive.php');
+					$vactivatelink = wp_nonce_url($vactivatelink,'activate-plugin_theme-test-drive/themedrive.php');
+					echo __('or').', <a href="'.$vactivatelink.'">'.__('activate Theme Test Drive plugin').'</a><br>';
+					echo __('to test BioShip without affecting your current site.');
+				} else {
+					// Theme Test Drive plugin installation link
+					$vinstalllink = wp_nonce_url(admin_url('update.php').'?action=install-plugin&plugin=theme-test-drive','install-plugin');
+				 	echo __('or').', <a href="'.$vinstalllink.'">'.__('install Theme Test Drive plugin').'</a><br>';
+				 	echo __('to test BioShip without affecting your current site.');
 				}
-				// elseif (in_array('theme-test-drive',$vinstalledplugins)) {
-				// 	TODO: Theme Test Drive plugin activation link
-				//  $vactivatepluginlink = ""; // ??
-				// 	echo "or, <a href='javascript:void(0);'>activate Theme Test Drive plugin</a>.";
-				// }
-				// else {
-				// 	TODO: Theme Test Drive plugin installation link
-				//  $vinstallpluginlink = ""; // ??
-				// 	echo "or, <a href='javascript:void(0);'>install Theme Test Drive</a>.";
-				// }
 				echo "</div>";
 			}
  		} else {
-			echo "Also from <b>WordQuest Alliance</b>, check out the<br>";
-			echo "<a href='http://bioship.space' target=_blank><b>BioShip Theme Framework</b></a><br>";
-			echo "A highly flexible and responsive starter theme<br>for users, designers and developers.";
-			echo "</center></td></tr>";
+			echo __('Also from').' <b>WordQuest Alliance</b>, '.__('check out the').'<br>';
+			echo "<a href='".$wqurls['bio']."' target=_blank><b>BioShip Theme Framework</b></a><br>";
+			echo __('A highly flexible and responsive starter theme').'<br>'.__('for users, designers and developers.');
 		}
 
 		if ( ($vtheme->template == 'bioship') || ($vtheme->stylesheet == 'bioship') ) {
@@ -762,24 +912,25 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 				}
 			}
 
-			// TODO: future link for rating on wordpress.org theme repository ?
-			// ? $vratelink = 'http://wordpress.org/themes/bioship/ ?
-			// echo "<br><a href='".$vratelink."' target=_blank>Rate on WordPress.Org</a><br>";
+			// TODO: future link for rating BioShip on wordpress.org theme repository ?
+			// ? $vratelink = 'https://wordpress.org/support/theme/bioship/reviews/#new-post';
+			// echo '<br><a href="'.$vratelink.'" target=_blank>'.__('Rate BioShip on WordPress.Org').'</a><br>';
 		}
-		echo '</center></td></tr>';
-		echo '</table></div></div>';
 
-		// Editor's Picks
-		// --------------
-		$boxid = 'recommendations'; $boxtitle = 'Editor\'s Picks';
+		// BioShip Feed
+		// ------------
+		// (only displays if Bioship theme is active)
+		if (function_exists('muscle_bioship_dashboard_feed_widget')) {
+			// $boxid = 'bioshipfeed'; $boxtitle = __('BioShip News');
+			// echo '<div id="'.$boxid.'" class="postbox">';
+			// echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
+			// echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;">';
+				muscle_bioship_dashboard_feed_widget(false);
+			// echo '</div></div>';
+		}
 
-		// ? TODO ? via TGMPA Recommendations ?
-		// echo '<div id="'.$boxid.'" class="postbox">';
-		// echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-		// echo '<div class="inside" id="'.$boxid.'-inside"><table>';
-		// 	echo "Recommended Plugins...";
-		//	print_r($vrecommended);
-		// echo '</table></div></div>';
+		echo '</center></td></tr></table>';
+		echo '</div></div>';
 
 	// end column
 	echo '</div>';
@@ -794,45 +945,64 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 	echo '<div id="feedcolumn">';
 
-		// Join WordQuest
-		// --------------
-		$boxid = 'wordquestjoin'; $boxtitle = 'Latest Release';
-		// echo '<div id="'.$boxid.'" class="postbox">';
-		// echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-		// echo '<div class="inside" id="'.$boxid.'-inside"><table>';
-		// echo 'Join WordQuest today. It is awesome.';
-		// echo '</table></div></div>';
+		// Latest / Next Release
+		// ---------------------
+		global $wqreleases; $vlatestrelease = ''; $vnextrelease = '';
+		if (isset($wqreleases['latest'])) {$vlatestrelease = $wqreleases['latest'];}
+		if (isset($wqreleases['next'])) {$vnextrelease = $wqreleases['next'];}
+
+		if ( (isset($vlatestrelease)) && (is_array($vlatestrelease)) ) {
+			if ($vlatestrelease['installed'] == 'no') {
+				$vrelease = $vlatestrelease; $boxid = 'wordquestlatest'; $boxtitle = __('Latest Release');
+			} else {$vrelease = $vnextrelease; $boxid = 'wordquestupcoming'; $boxtitle = __('Upcoming Release');}
+		} elseif ( (isset($vnextrelease)) && (is_array($vnextrelease)) ) {
+			$vrelease = $vnextrelease; $boxid = 'wordquestupcoming'; $boxtitle = __('Upcoming Release');
+		}
+
+		if ( (isset($vrelease)) && (is_array($vrelease)) ) {
+			echo '<div id="'.$boxid.'" class="postbox">';
+			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
+			echo '<div class="inside" id="'.$boxid.'-inside"><table>';
+			echo "<table><tr><td align='center'><img src='".$vrelease['icon']."' width='100' height='100'><br>";
+			echo "<a href='".$vlatestrelease['home']."' target=_blank><b>".$vrelease['title']."</b></a></td><td width='10'></td>";
+			echo "<td><span style='font-size:9pt;'>".$vrelease['description']."</span><br><br>";
+			if ( (isset($vrelease['package'])) && (is_array($vrelease['package'])) ) {
+				$vinstalllink = wp_nonce_url(admin_url('update.php')."?action=wordquest_plugin_install&plugin=".$vrelease['slug'],'plugin-upload');
+				echo "<center><a href='".$vinstalllink."' class='button-primary'>".__('Install Now')."</a></center>";
+			} else {echo "<center>".__('Expected').": ".date('jS F Y',strtotime($vrelease['releasedate']));}
+			echo "</td></tr></table>";
+			echo '</table></div></div>';
+		}
 
 		// WordQuest Feed
 		// --------------
-		$boxid = 'wordquestfeed'; $boxtitle = 'WordQuest News';
+		$boxid = 'wordquestfeed'; $boxtitle = __('WordQuest News');
 		if (function_exists('wqhelper_dashboard_feed_widget')) {
 			echo '<div id="'.$boxid.'" class="postbox">';
 			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-			echo '<div class="inside" id="'.$boxid.'-inside">';
+			echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;">';
 				wqhelper_dashboard_feed_widget();
 			echo '</div></div>';
 		}
 
-		// BioShip Feed
-		// ------------
-		// (only displays if Bioship theme is active)
-		$boxid = 'bioshipfeed'; $boxtitle = 'BioShip News';
-		if (function_exists('muscle_bioship_dashboard_feed_widget')) {
-			echo '<div id="'.$boxid.'" class="postbox">';
-			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-			echo '<div class="inside" id="'.$boxid.'-inside">';
-				muscle_bioship_dashboard_feed_widget(false);
-			echo '</div></div>';
-		}
+		// Editors Picks
+		// -------------
+		$boxid = 'recommendations'; $boxtitle = __('Editor Picks');
+		// TODO: Recommended Plugins via Plugin Review?
+		// echo '<div id="'.$boxid.'" class="postbox">';
+		// echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
+		// echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;"><table>';
+		// 	echo "Recommended Plugins...";
+		//	print_r($vrecommended);
+		// echo '</table></div></div>';
 
 		// PluginReview Feed
 		// -----------------
-		$boxid = 'pluginreviewfeed'; $boxtitle = 'Plugin Reviews';
+		$boxid = 'pluginreviewfeed'; $boxtitle = __('Plugin Reviews');
 		if (function_exists('wqhelper_pluginreview_feed_widget')) {
 			echo '<div id="'.$boxid.'" class="postbox">';
 			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
-			echo '<div class="inside" id="'.$boxid.'-inside">';
+			echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;">';
 				wqhelper_pluginreview_feed_widget();
 			echo '</div></div>';
 		}
@@ -840,7 +1010,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	// end column
 	echo "</div>";
 
-	// feed javascript
+	// queue feed javascript
 	if (!has_action('admin_footer','wqhelper_dashboard_feed_javascript')) {
 		add_action('admin_footer','wqhelper_dashboard_feed_javascript');
 	}
@@ -870,7 +1040,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 $vfuncname = 'wqhelper_admin_scripts_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
  $wqfunctions[$vfuncname] = function() {
- 	// wordquest admin submenu icon and styling fix
+ 	// wordquest admin submenu icon and styling fixes
 	echo "<script>function wordquestsubmenufix(slug,iconurl,current) {
 	jQuery('li a').each(function() {
 		position = this.href.indexOf('admin.php?page='+slug);
@@ -895,50 +1065,64 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 // Install a WordQuest Plugin
 // --------------------------
+// 1.6.5: hook to update.php update-custom_{ACTION} where ACTION = 'wordquest_plugin_install'
+add_action('update-custom_wordquest_plugin_install','wqhelper_install_plugin');
+
 $vfuncname = 'wqhelper_install_plugin_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
  $wqfunctions[$vfuncname] = function() {
-	if (current_user_can('manage_options')) {
 
-		// get the package from download/update server
-		$vpluginslug = $_REQUEST['plugin'];
-		$vwqurl = 'http://'.'wordquest.org';
-		$vurl = $vwqurl.'/downloads/?action=get_metadata&slug='.$vpluginslug;
-		$vresponse = wp_remote_get($vurl,array('timeout'=>30));
-		if (!is_wp_error($vresponse)) {
-			if (stristr($vresponse['body'],'404 Not Found')) {
-				// try to get package info from transient data
-				$vplugininfo = get_transient('wordquestplugininfo');
-				if (is_array($vpluginfo)) {
-					foreach ($vplugininfo as $vplugin) {
-						if (is_object($vplugin)) {
-							if ($vplugin->slug == $vpluginslug) {
-								$vpluginpackage = $vplugin['package'];
-							}
-						}
-					}
-				}
-			} else {$vpluginpackage = json_decode($vresponse['body']);}
-		}
+	global $wqurls;
 
-		if (!isset($vpluginpackage)) {exit;} // failed, add a message?
-
-		// now download the package...
-		$vdownload = wp_remote_get($vpluginpackage->download_url);
-		if (is_wp_error($vdownload)) { // give it another go...
-			sleep(5); $vdownload = wp_remote_get($vpluginpackage->download_url);
-		}
-
-		if (!is_wp_error($vdownload)) {
-			$vplugin = $vdownload['body'];
-
-		} else {exit;} // failed, add a message?
-
-		// TODO: pass the zip package on to Wordpress to do the rest?
-
-		// INSTALL PLUGIN ZIP
-
+	// check permissions and nonce
+	if (!current_user_can('upload_plugins')) {
+		wp_die( __('Sorry, you are not allowed to install plugins on this site.') );
 	}
+	check_admin_referer('plugin-upload');
+
+	// get the package info from download server
+	$vpluginslug = $_REQUEST['plugin'];
+	$vurl = $wqurls['wq'].'/downloads/?action=get_metadata&slug='.$vpluginslug;
+	$vresponse = wp_remote_get($vurl,array('timeout' => 30));
+	if (!is_wp_error($vresponse)) {
+		if ($vresponse['response']['code'] == '404') {
+			// try to get package info from stored transient data
+			$vplugininfo = get_transient('wordquest_plugin_info');
+			if (is_array($vpluginfo)) {
+				foreach ($vplugininfo as $vplugin) {
+					if ($vplugin['slug'] == $vpluginslug) {$vpluginpackage = $vplugin['package'];}
+				}
+			}
+		} else {$vpluginpackage = json_decode($vresponse['body'],true);}
+	}
+
+	if (!isset($vpluginpackage)) {
+		if (is_ssl()) {$vtryagainurl = 'https://';} else {$vtryagainurl = 'http://';}
+		$vtryagainurl .= $_SERVER['HTTP_HOST'].$_SERVER['PHP_SELF'].'?'.$_SERVER['QUERY_STRING'];
+		wp_die( __('Failed to retrieve download package information.').' <a href="'.$vtryagainurl.'">'.__('Try again?').'</a>' );
+	}
+
+	// 1.6.5: pass the package download URL to Wordpress to do the rest
+
+	// set the Plugin_Installer_Skin arguments
+	// ---------------------------------------
+	$url = $vpluginpackage['download_url'];
+	$title = sprintf( __('Installing Plugin from URL: %s'), esc_html($url) );
+	$nonce = 'plugin-upload';
+	$type = 'web';
+	$args = compact('type', 'title', 'nonce', 'url');
+
+	// custom Plugin_Upgrader (via /wp-admin/upgrade.php)
+	// --------------------------------------------------
+
+	$title = __('Upload Plugin'); $parent_file = 'plugins.php';	$submenu_file = 'plugin-install.php';
+	require_once(ABSPATH . 'wp-admin/admin-header.php');
+
+	$upgrader = new Plugin_Upgrader( new Plugin_Installer_Skin( $args ) );
+	$result = $upgrader->install( $url );
+
+	include(ABSPATH . 'wp-admin/admin-footer.php');
+
  };
 }
 
@@ -953,7 +1137,8 @@ $vfuncname = 'wqhelper_sidebar_floatbox_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
  $wqfunctions[$vfuncname] = function($vargs) {
 
-	// echo "****"; print_r($vargs); echo "*****"; // debug point
+	global $wqdebug, $wqurls;
+	if ($wqdebug) {echo "<!-- Sidebar Args: "; print_r($vargs); echo " -->";}
 
 	if (count($vargs) == 7) {
 		// the old way, sending all args individually
@@ -977,16 +1162,18 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 			$vwporgslug = $wordquestplugins[$vslug]['wporgslug'];
 		} else {$vwporgslug = '';}
 
-		echo "<!-- Plugin Info: "; print_r($wordquestplugins[$vslug]); echo "-->";
+		if ($wqdebug) {echo "<!-- Sidebar Plugin Info: "; print_r($wordquestplugins[$vslug]); echo "-->";}
 	}
 
 	// 1.5.0: get/convert to single array of plugin sidebar options
 	// 1.6.0: fix to sidebar options variable
 	$sidebaroptions = get_option($vpre.'_sidebar_options');
 	if ( ($sidebaroptions == '') || (!is_array($sidebaroptions)) ) {
-		$sidebaroptions['adsboxoff'] = get_option($vpre.'_ads_box_off'); delete_option($vpre.'_ads_box_off');
-		$sidebaroptions['donationboxoff'] = get_option($vpre.'_donation_box_off'); delete_option($vpre.'_donation_box_off');
-		$sidebaroptions['reportboxoff'] = get_option($vpre.'_report_box_off'); delete_option($vpre.'_report_box_off');
+		$sidebaroptions['installdate'] = date('Y-m-d');
+		$sidebaroptions['adsboxoff'] = get_option($vpre.'_ads_box_off');
+		$sidebaroptions['donationboxoff'] = get_option($vpre.'_donation_box_off');
+		$sidebaroptions['reportboxoff'] = get_option($vpre.'_report_box_off');
+		delete_option($vpre.'_ads_box_off'); delete_option($vpre.'_donation_box_off'); delete_option($vpre.'_report_box_off');
 		add_option($vpre.'_sidebar_options',$sidebaroptions);
 	}
 
@@ -995,24 +1182,84 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	function doshowhidediv(divname) {
 		if (document.getElementById(divname).style.display == 'none') {document.getElementById(divname).style.display = '';}
 		else {document.getElementById(divname).style.display = 'none';}
-		/* jQuery(document.body).trigger('sticky_kit:recalc'); */
-	}
-	</script>";
+		if (typeof sticky_in_parent === 'function') {jQuery(document.body).trigger('sticky_kit:recalc');}
+	}</script>";
 
 	// Floatbox Styles
 	echo '<style>#floatdiv {margin-top:20px;} .inside {font-size:9pt; line-height:1.6em; padding:0px;}
 	#floatdiv a {text-decoration:none;} #floatdiv a:hover {text-decoration:underline;}
 	#floatdiv .stuffbox {background-color:#FFFFFF; margin-bottom:10px; padding-bottom:10px; text-align:center; width:25%;}
-	#floatdiv .stuffbox .inside {padding:0 3px;}
-	.stuffbox h3 {margin:10px 0; background-color:#FAFAFA; font-size:12pt;}
+	#floatdiv .stuffbox .inside {padding:0 3px;} .stuffbox h3 {margin:10px 0; background-color:#FAFAFA; font-size:12pt;}
 	</style>';
 
 	echo '<div id="floatdiv" class="floatbox">';
-	echo '<!-- WQ Helper Loaded From: '.dirname(__FILE__).' -->';
+	if ($wqdebug) {echo '<!-- WQ Helper Loaded From: '.dirname(__FILE__).' -->';}
 
 	// Call (optional) Plugin Sidebar Header
 	$vfuncname = $vpre.'_sidebar_plugin_header';
 	if (function_exists($vfuncname)) {call_user_func($vfuncname);}
+
+	// Save Settings Button
+	// --------------------
+	if ($vsavebutton != 'replace') {
+
+		echo '<div id="savechanges"><div class="stuffbox" style="width:250px;background-color:#ffffff;">';
+		echo '<h3>'.__('Update Settings').'</h3><div class="inside"><center>';
+
+		if ($vsavebutton == 'yes') {
+			$vbuttonoutput = "<script>function sidebarsavepluginsettings() {jQuery('#plugin-settings-save').trigger('click');}</script>";
+			$vbuttonoutput .= "<table><tr>";
+			$vbuttonoutput .= "<td align='center'><input id='sidebarsavebutton' onclick='sidebarsavepluginsettings();' type='button' class='button-primary' value='Save Settings'></td>";
+			$vbuttonoutput .= "<td width='30'></td>";
+			$vbuttonoutput .= "<td><div style='line-height:1em;'><font style='font-size:8pt;'><a href='javascript:void(0);' style='text-decoration:none;' onclick='doshowhidediv(\"sidebarsettings\");hidesidebarsaved();'>".__('Sidebar')."<br>".__('Options')."</a></font></div></td>";
+			$vbuttonoutput .= "</tr></table>";
+			$vbuttonoutput = apply_filters('wordquest_sidebar_save_button',$vbuttonoutput);
+			echo $vbuttonoutput;
+		}
+		elseif ($vsavebutton == 'no') {echo "";}
+		else {echo "<div style='line-height:1em;text-align:center;'><font style='font-size:8pt;'><a href='javascript:void(0);' style='text-decoration:none;' onclick='doshowhidediv(\"sidebarsettings\");hidesidebarsaved();'>".__('Sidebar Options')."</a></font></div>";}
+
+		echo "<div id='sidebarsettings' style='display:none;'><br>";
+
+			global $wordquesthelper;
+			echo "<form action='".admin_url('admin-ajax.php')."' target='savesidebar' method='post'>";
+			// 1.6.5: added nonce field
+			wp_nonce_field($vpre.'_sidebar');
+			echo "<input type='hidden' name='action' value='wqhelper_update_sidebar_boxes'>";
+			// 1.6.0: added version matching form field
+			echo "<input type='hidden' name='wqhv' value='".$wordquesthelper."'>";
+			echo "<input type='hidden' name='sidebarprefix' value='".$vpre."'>";
+			echo "<table><tr><td align='center'>";
+			echo "<b>".__('I rock! I have made a donation.')."</b><br>(".__('hides donation box').")</td><td width='10'></td>";
+			echo "<td align='center'><input type='checkbox' name='".$vpre."_donation_box_off' value='checked'";
+			if ($sidebaroptions['donationboxoff'] == 'checked') {echo " checked>";} else {echo ">";}
+			echo "</td></tr>";
+
+			echo "<tr><td align='center'>";
+			echo "<b>".__("I've got your report, you")."<br>".__('can stop bugging me now.')." :-)</b><br>(".__('hides report box').")</td><td width='10'></td>";
+			echo "<td align='center'><input type='checkbox' name='".$vpre."_report_box_off' value='checked'";
+			if ($sidebaroptions['reportboxoff'] == 'checked') {echo " checked>";} else {echo ">";}
+			echo "</td></tr>";
+
+			echo "<tr><td align='center'>";
+			echo "<b>".__('My site is so awesome it')."<br>"._("doesn't need any more quality")."<br>".__('plugin recommendations').".</b><br>(".__('hides sidebar ads.').")</td><td width='10'></td>";
+			echo "<td align='center'><input type='checkbox' name='".$vpre."_ads_box_off' value='checked'";
+			// 1.6.5: fix to undefined index warning
+			if ($sidebaroptions['adsboxoff'] == 'checked') {echo " checked>";} else {echo ">";}
+			echo "</td></tr></table><br>";
+
+			echo "<center><input type='submit' class='button-secondary' value='".__('Save Sidebar Options')."'></center></form><br>";
+			echo "<iframe src='javascript:void(0);' name='savesidebar' id='savesidebar' width='200' height='200' style='display:none;'></iframe>";
+
+			echo "<div id='sidebarsaved' style='display:none;'>";
+			echo "<table style='background-color: lightYellow; border-style:solid; border-width:1px; border-color: #E6DB55; text-align:center;'>";
+			echo "<tr><td><div class='message' style='margin:0.25em;'><font style='font-weight:bold;'>";
+			echo __('Sidebar Options Saved.')."</font></div></td></tr></table></div>";
+
+		echo "</div></center>";
+
+		echo '</div></div></div>';
+	}
 
 	// Donation Box
 	// ------------
@@ -1021,21 +1268,24 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	echo '<div id="donate"';
 	if ($sidebaroptions['donationboxoff'] == 'checked') {echo " style='display:none;'>";} else {echo ">";}
 	if ($vfreepremium == 'free') {
-		echo '<div class="stuffbox" style="width:250px;background-color:#ffffff;"><h3>Gifts of Appreciation</h3><div class="inside">';
+		echo '<div class="stuffbox" style="width:250px;background-color:#ffffff;">';
+		echo '<h3>'.__('Gifts of Appreciation').'</h3><div class="inside">';
 		wqhelper_sidebar_paypal_donations($vargs);
 		wqhelper_sidebar_testimonial_box($vargs);
 		if ($vwporgslug != '') {
-			echo "<a href='http://wordpress.org/support/view/plugin-reviews/'".$vwporgslug."'?rate=5#postform' target='_blank'>&#9733; Rate this Plugin on Wordpress.Org</a></center>";
+			echo "<a href='http://wordpress.org/support/view/plugin-reviews/'".$vwporgslug."'?rate=5#postform' target='_blank'>";
+			echo "&#9733; ".__('Rate this Plugin on Wordpress.Org')."</a></center>";
 		}
 		// elseif ($vpluginslug == 'bioship') {
 			// 1.5.0: add star rating for theme (when in repository)
-			// echo "<a href='https://wordpress.org/support/view/theme-reviews/bioship#postform' target='_blank'>&#9733; Rate this Theme on Wordpress.Org</a></center>";
+			// echo "<a href='https://wordpress.org/support/view/theme-reviews/bioship#postform' target='_blank'>";
+			// echo "&#9733; ".__('Rate this Theme on Wordpress.Org')."</a></center>";
 		// }
 		echo '</div></div>';
-	}
-	elseif ($vfreepremium == 'premium') {
-		echo '<div class="stuffbox" style="width:250px;background-color:#ffffff;"><h3>Testimonials</h3><div class="inside">';
-		wqhelper_sidebar_testimonial_box($vargs);
+	} elseif ($vfreepremium == 'premium') {
+		echo '<div class="stuffbox" style="width:250px;background-color:#ffffff;">';
+		echo '<h3>'.__('Testimonials').'</h3><div class="inside">';
+			wqhelper_sidebar_testimonial_box($vargs);
 		echo '</div></div>';
 	}
 	echo '</div>';
@@ -1050,18 +1300,19 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	if ($vlastname != '') {$vusername .= ' '.$vlastname;}
 
 	if ($vpluginslug == 'bioship') {$vreportimage = get_template_directory_uri()."/images/rv-report.jpg";}
-	else {$vreportimage = plugin_dir_url(__FILE__)."images/rv-report.jpg";}
+	else {$vreportimage = plugins_url('images/rv-report.jpg',__FILE__);}
 	echo '<div id="bonusoffer"';
 	if (get_option($vpre.'_report_box_off') == 'checked') {echo " style='display:none;'>";} else {echo ">";}
-	echo '<div class="stuffbox" style="width:250px;background-color:#ffffff;"><h3>Bonus Offer</h3><div class="inside">';
+	echo '<div class="stuffbox" style="width:250px;background-color:#ffffff;">';
+	echo '<h3>'.__('Bonus Offer').'</h3><div class="inside">';
 	echo "<center><table cellpadding='0' cellspacing='0'><tr><td align='center'><img src='".$vreportimage."' width='60' height='80'><br>";
-	echo "<font style='font-size:6pt;'><a href='http://pluginreview.net/return-visitors-report/' target=_blank>learn more...</a></font></td><td width='7'></td>";
+	echo "<font style='font-size:6pt;'><a href='".$wqurls['prn']."/return-visitors-report/' target=_blank>".__('learn more')."...</a></font></td><td width='7'></td>";
 	echo "<td align='center'><b><font style='color:#ee0000;font-size:9pt;'>Maximize Sales Conversions:</font><br><font style='color:#0000ee;font-size:10pt;'>The Return Visitors Report</font></b><br>";
-	echo "<form style='margin-top:7px;' action='http://pluginreview.net/?visitorfunnel=join' target='_blank' method='post'>";
+	echo "<form style='margin-top:7px;' action='".$wqurls['prn']."/?visitorfunnel=join' target='_blank' method='post'>";
 	echo "<input type='hidden' name='source' value='".$vpluginslug."-sidebar'>";
-	echo "<input placeholder='Your Email...' type='text' style='width:150px;font-size:9pt;' name='subemail' value='".$vuseremail."'><br>";
-	echo "<table><tr><td><input placeholder='Your Name...' type='text' style='width:90px;font-size:9pt;' name='subname' value='".$vusername."'></td>";
-	echo "<td><input type='submit' class='button-secondary' value='Get it!'></td></tr></table>";
+	echo "<input placeholder='".__('Your Email')."...' type='text' style='width:150px;font-size:9pt;' name='subemail' value='".$vuseremail."'><br>";
+	echo "<table><tr><td><input placeholder='".__('Your Name')."...' type='text' style='width:90px;font-size:9pt;' name='subname' value='".$vusername."'></td>";
+	echo "<td><input type='submit' class='button-secondary' value='".__('Get it!')."'></td></tr></table>";
 	echo "</td></tr></table></form></center>";
 	echo '</div></div></div>';
 
@@ -1069,8 +1320,9 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	// --------------------------
 	if ($sidebaroptions['adsboxoff'] != 'checked') {
 		echo '<div id="pluginads">';
-		echo '<div class="stuffbox" style="width:250px;"><h3>Recommended</h3><div class="inside">';
-		echo "<script language='javascript' src='http://pluginreview.net/recommends/?s=yes&a=majick&c=".$vpluginslug."&t=sidebar'></script>";
+		echo '<div class="stuffbox" style="width:250px;">';
+		echo '<h3>'.__('Recommended').'</h3><div class="inside">';
+		echo "<script language='javascript' src='".$wqurls['prn']."/recommends/?s=yes&a=majick&c=".$vpluginslug."&t=sidebar'></script>";
 		echo '</div></div></div>';
 	}
 
@@ -1082,83 +1334,24 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 		// Default Sidebar Plugin Footer
 		// -----------------------------
 		// also allow for theme not plugin...
-		$vwqurl = 'http://'.'wordquest.org';
 		if ($vpluginslug == 'bioship') {
 			$viconurl = get_template_directory_uri().'/images/wordquest.png';
-			$vpluginurl = "http://"."bioship.space/";
-			$vpluginfootertitle = 'Theme Info';
+			$vpluginurl = $wqurls['bio'];
+			$vpluginfootertitle = __('Theme Info');
 		} else {
-			$viconurl = plugin_dir_url(__FILE__)."images/wordquest.png";
-			$vpluginurl = $vwqurl."/plugins/".$vpluginslug."/";
-			$vpluginfootertitle = 'Plugin Info';
+			$viconurl = plugins_url("images/wordquest.png",__FILE__);
+			$vpluginurl = $wqurls['wq']."/plugins/".$vpluginslug."/";
+			$vpluginfootertitle = __('Plugin Info');
 		}
 		echo '<div id="pluginfooter"><div class="stuffbox" style="width:250px;background-color:#ffffff;"><h3>'.$vpluginfootertitle.'</h3><div class="inside">';
 		echo "<center><table><tr>";
-		echo "<td><a href='".$vwqurl."/' target='_blank'><img src='".$viconurl."' border=0></a></td></td>";
+		echo "<td><a href='".$wqurls['wq']."/' target='_blank'><img src='".$viconurl."' border=0></a></td></td>";
 		echo "<td width='14'></td>";
 		echo "<td><a href='".$vpluginurl."' target='_blank'>".$vplugintitle."</a> <i>v".$vpluginversion."</i><br>";
-		echo "by <a href='".$vwqurl."/' target='_blank'>WordQuest Alliance</a><br>";
-		echo "<a href='".$vwqurl."/plugins/' target='_blank'><b>&rarr; More Cool Plugins</b></a><br>";
-		echo "<a href='http://"."pluginreview.net/directory/' target='_blank'>&rarr; Plugin Directory</a></td>";
+		echo "by <a href='".$wqurls['wq']."/' target='_blank'>WordQuest Alliance</a><br>";
+		echo "<a href='".$wqurls['wq']."/plugins/' target='_blank'><b>&rarr; ".__('More Cool Plugins')."</b></a><br>";
+		echo "<a href='".$wqurls['prn']."/directory/' target='_blank'>&rarr; ".__('Plugin Directory')."</a></td>";
 		echo "</tr></table></center>";
-		echo '</div></div></div>';
-	}
-
-	// Save Settings Button
-	// --------------------
-	if ($vsavebutton != 'replace') {
-
-		echo '<div id="savechanges"><div class="stuffbox" style="width:250px;background-color:#ffffff;"><h3>Update Settings</h3><div class="inside"><center>';
-
-		if ($vsavebutton == 'yes') {
-			$vbuttonoutput = "<script>function sidebarsavepluginsettings() {jQuery('#plugin-settings-save').trigger('click');}</script>";
-			$vbuttonoutput .= "<table><tr>";
-			$vbuttonoutput .= "<td align='center'><input id='sidebarsavebutton' onclick='sidebarsavepluginsettings();' type='button' class='button-primary' value='Save Settings'></td>";
-			$vbuttonoutput .= "<td width='30'></td>";
-			$vbuttonoutput .= "<td><div style='line-height:1em;'><font style='font-size:8pt;'><a href='javascript:void(0);' style='text-decoration:none;' onclick='doshowhidediv(\"sidebarsettings\");hidesidebarsaved();'>Sidebar<br>Options</a></font></div></td>";
-			$vbuttonoutput .= "</tr></table>";
-			$vbuttonoutput = apply_filters('wordquest_sidebar_save_button',$vbuttonoutput);
-			echo $vbuttonoutput;
-		}
-		elseif ($vsavebutton == 'no') {echo "";}
-		else {echo "<div style='line-height:1em;text-align:center;'><font style='font-size:8pt;'><a href='javascript:void(0);' style='text-decoration:none;' onclick='doshowhidediv(\"sidebarsettings\");hidesidebarsaved();'>Sidebar Options</a></font></div>";}
-
-		echo "<div id='sidebarsettings' style='display:none;'><br>";
-
-			global $wordquesthelper;
-			echo "<form action='".admin_url('admin-ajax.php')."' target='savesidebar' method='post'>";
-			echo "<input type='hidden' name='action' value='wqhelper_update_sidebar_options'>";
-			// 1.6.0: added version matching form field
-			echo "<input type='hidden' name='wqhv' value='".$wordquesthelper."'>";
-			echo "<input type='hidden' name='sidebarprefix' value='".$vpre."'>";
-			echo "<table><tr><td align='center'>";
-			echo "<b>I rock! I have made a donation.</b><br>(hides donation box)</td><td width='10'></td>";
-			echo "<td align='center'><input type='checkbox' name='".$vpre."_donation_box_off' value='checked'";
-			if ($sidebaroptions['donationboxoff'] == 'checked') {echo " checked>";} else {echo ">";}
-			echo "</td></tr>";
-
-			echo "<tr><td align='center'>";
-			echo "<b>I've got your report, you<br>can stop bugging me now. :-)</b><br>(hides report box)</td><td width='10'></td>";
-			echo "<td align='center'><input type='checkbox' name='".$vpre."_report_box_off' value='checked'";
-			if ($sidebaroptions['reportboxoff'] == 'checked') {echo " checked>";} else {echo ">";}
-			echo "</td></tr>";
-
-			echo "<tr><td align='center'>";
-			echo "<b>My site is so awesome it<br>doesn't need any more quality<br>plugins recommendations.</b><br>(hides sidebar ads.)</td><td width='10'></td>";
-			echo "<td align='center'><input type='checkbox' name='".$vpre."_ads_box_off' value='checked'";
-			if ($sidebaroptions['ads_box_off'] == 'checked') {echo " checked>";} else {echo ">";}
-			echo "</td></tr></table><br>";
-
-			echo "<center><input type='submit' class='button-secondary' value='Save Sidebar Options'></center></form><br>";
-			echo "<iframe src='javascript:void(0);' name='savesidebar' id='savesidebar' width='250' height'250' style='display:none;'></iframe>";
-
-			echo "<div id='sidebarsaved' style='display:none;'>";
-			echo "<table style='background-color: lightYellow; border-style:solid; border-width:1px; border-color: #E6DB55; text-align:center;'>";
-			echo "<tr><td><div class='message' style='margin:0.25em;'><font style='font-weight:bold;'>";
-			echo "Sidebar Options Saved.</font></div></td></tr></table></div>";
-
-		echo "</div></center>";
-
 		echo '</div></div></div>';
 	}
 
@@ -1174,6 +1367,8 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 $vfuncname = 'wqhelper_sidebar_paypal_donations_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
  $wqfunctions[$vfuncname] = function($vargs) {
+
+	global $wqurls;
 
 	$vpre = $vargs[0]; $vpluginslug = $vargs[1];
 	if (function_exists($vpre.'_donations_special_top')) {
@@ -1240,179 +1435,96 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	}
 	</script>";
 
-
-	$vwqurl = 'http://'.'wordquest.org';
-	$vnotifyurl = $vwqurl.'/?estore_pp_ipn=process';
-	$vsandbox = '';
-	// $vsandbox = 'sandbox.';
+	$vnotifyurl = $wqurls['wq'].'/?estore_pp_ipn=process';
+	$vsandbox = ''; // $vsandbox = 'sandbox.';
 
 	// recurring / one-time switcher
 	echo "<center><table cellpadding='0' cellspacing='0'><tr><td>";
-	echo "<input name='donatetype' id='recurradio' type='radio' onclick='showrecurringform();' checked> <a href='javascript:void(0);' onclick='showrecurringform();' style='text-decoration:none;'>Supporter</a> ";
+	echo "<input name='donatetype' id='recurradio' type='radio' onclick='showrecurringform();' checked> <a href='javascript:void(0);' onclick='showrecurringform();' style='text-decoration:none;'>".__('Supporter')."</a> ";
 	echo "</td><td width='10'></td><td>";
-	echo "<input name='donatetype' id='onetimeradio' type='radio' onclick='showonetimeform();'> <a href-'javascript:void(0);' onclick='showonetimeform();' style='text-decoration:none;'>One Time</a>";
+	echo "<input name='donatetype' id='onetimeradio' type='radio' onclick='showonetimeform();'> <a href-'javascript:void(0);' onclick='showonetimeform();' style='text-decoration:none;'>".__('One Time')."</a>";
 	echo "</td></tr></table></center>";
 
 	// 1.5.0: weekly amounts
 	echo '<div style="display:none;"><input type="hidden" id="weeklyselected" value="3">
 	<select name="wp_eStore_subscribe" id="weeklyamounts" style="font-size:8pt;" size="1">
-	<optgroup label="Supporter Amount">
-	<option value="1">Copper: $1 </option>
-	<option value="3">Bronze: $2</option>
-	<option value="5">Silver: $4</option>
-	<option value="7">Gold: $5</option>
-	<option value="9">Platinum: $7.50</option>
-	<option value="11">Titanium: $10</option>
-	<option value="13">Star Ruby: $12.50</option>
-	<option value="15">Star Topaz: $15</option>
-	<option value="17">Star Emerald: $17.50</option>
-	<option value="19">Star Sapphire: $20</option>
-	<option value="21">Star Diamond: $25</option>
+	<optgroup label="'.__('Supporter Amount').'">
+	<option value="1">'.__('Copper').': $1 </option>
+	<option value="3">'.__('Bronze').': $2</option>
+	<option value="5">'.__('Silver').': $4</option>
+	<option value="7">'.__('Gold').': $5</option>
+	<option value="9">'.__('Platinum').': $7.50</option>
+	<option value="11">'.__('Titanium').': $10</option>
+	<option value="13">'.__('Star Ruby').': $12.50</option>
+	<option value="15">'.__('Star Topaz').': $15</option>
+	<option value="17">'.__('Star Emerald').': $17.50</option>
+	<option value="19">'.__('Star Sapphire').': $20</option>
+	<option value="21">'.__('Star Diamond').': $25</option>
 	</select></div>';
 
 	// 1.5.0: monthly amounts
 	echo '<div style="display:none;"><input type="hidden" id="monthlyselected" value="3">
 	<select name="wp_eStore_subscribe" id="monthlyamounts" style="font-size:8pt;" size="1">
-	<optgroup label="Supporter Amount">
-	<option value="2">Copper: $5</option>
-	<option value="4">Bronze: $10</option>
-	<option value="6">Silver: $15</option>
-	<option value="9" selected="selected">Gold: $20</option>
-	<option value="10">Platinum: $30</option>
-	<option value="12">Titanium: $40</option>
-	<option value="14">Star Ruby: $50</option>
-	<option value="16">Star Topaz: $60</option>
-	<option value="18">Star Emerald: $70</option>
-	<option value="20">Star Sapphire: $80</option>
-	<option value="22">Star Diamond: $100</option>
+	<optgroup label="'.__('Supporter Amount').'">
+	<option value="2">'.__('Copper').': $5</option>
+	<option value="4">'.__('Bronze').': $10</option>
+	<option value="6">'.__('Silver').': $15</option>
+	<option value="9" selected="selected">'.__('Gold').': $20</option>
+	<option value="10">'.__('Platinum').': $30</option>
+	<option value="12">'.__('Titanium').': $40</option>
+	<option value="14">'.__('Star Ruby').': $50</option>
+	<option value="16">'.__('Star Topaz').': $60</option>
+	<option value="18">'.__('Star Emerald').': $70</option>
+	<option value="20">'.__('Star Sapphire').': $80</option>
+	<option value="22">'.__('Star Diamond').': $100</option>
 	</select></div>';
 
 	// recurring form
-	// $vwqurl.'/?wp_eStore_subscribe=LEVEL&c_input='.$vpluginslug;
+	// $wqurls['wq'].'/?wp_eStore_subscribe=LEVEL&c_input='.$vpluginslug;
 
 	if ($vpluginslug == 'bioship') {$vdonateimage = get_template_directory_uri()."/images/pp-donate.jpg";}
-	else {$vdonateimage = plugin_dir_url(__FILE__)."/images/pp-donate.jpg";}
-	// echo '
-	//	<center><form id="recurringdonation" method="POST" action="https://www.'.$vsandbox.'paypal.com/cgi-bin/webscr" target="_blank">
-	//	<input type="hidden" name="bn" value="WordQuest_Donate_SF_AU">
-	//	<input type="hidden" name="business" value="contribute@wordquest.org">
-	//	<input type="hidden" id="r_item_name" name="item_name" value="'.$vpluginname.' Supporter">
-	//	<input type="hidden" id="r_custom" name="custom" value="'.$vpluginslug.'">
-	//	<input type="hidden" name="item_number" value>
-	//	<input type="hidden" name="currency_code" value="USD">
-	//	<input type="hidden" name="no_shipping" value="1">
-	//	<input type="hidden" name="image_url" value="'.$vwurl.'/images/wordquest-paypal-logo.jpg">
-	//	<input type="hidden" id="r_return" name="return" value="'.$vwqurl.'/thankyou/?plugin='.$vpluginslug.'">
-	//	<input type="hidden" name="cbt" value="Return to Contribute Page">
-	//	<input type="hidden" id="r_cancel_return" name="cancel_return" value="'.$vwqurl.'/contribute/?plugin='.$vpluginslug.'">
-	//	<input type="hidden" name="no_note" value="0">
-	//	<input type="hidden" name="cn" value="Give a Testimonial and/or Log Feature Request">
-	//	<input type="hidden" name="notify_url" value="'.$vnotifyurl.'">
-
-	//	<input type="hidden" name="cmd" value="_xclick-subscriptions">
-	//	<input type="hidden" name="p3" value="1">
-	//	<input type="hidden" name="src" value="1">
-	//	<input type="hidden" name="sra" value="0">
-	//	<input type="hidden" name="modify" value="1">
-	//	<table cellpadding="0" cellspacing="0"><tr><td>
-	//	<select name="a3" style="font-size:8pt;" size="1" id="periodoptions" onchange="storeamount();">
-	//	<option value="">Supporter Amount</option>
-	//	<option value="1">Copper: $1 </option>
-	//	<option value="2">Bronze: $2</option>
-	//	<option value="3">Silver: $3</option>
-	//	<option value="4" selected="selected">Gold: $4</option>
-	//	<option value="5">Platinum: $5</option>
-	//	<option value="6">Titanium: $6</option>
-	//	<option value="7">Ruby: $7</option>
-	//	<option value="8">Topaz: $8</option>
-	//	<option value="9">Emerald: $9</option>
-	//	<option value="10">Sapphire: $10</option>
-	//	<option value="12">Diamond: $12</option>
-	//	</select>
-	//	</td><td width="5"></td><td>
-	//	<select name="t3" style="font-size:9pt;" id="recurperiod" onchange="switchperiodoptions()">
-	//	<option selected="selected" value="W">Weekly</option>
-	//	<option value-"M">Monthly</option>
-	//	</select></tr></table>
-	//	<input type="image" src="'.$vdonateimage.'" border="0" name="I1">
-	//	</center></form>
-	// ';
-
+	else {$vdonateimage = plugins_url("/images/pp-donate.jpg",__FILE__);}
 	echo '
-		<center><form id="recurringdonation" method="GET" action="'.$vwqurl.'" target="_blank">
+		<center><form id="recurringdonation" method="GET" action="'.$wqurls['wq'].'" target="_blank">
 		<input type="hidden" name="c_input" value="'.$vpluginslug.'">
 		<select name="wp_eStore_subscribe" style="font-size:10pt;" size="1" id="periodoptions" onchange="storeamount();">
-		<optgroup label="Supporter Amount">
-		<option value="1">Copper: $1 </option>
-		<option value="3">Bronze: $2</option>
-		<option value="5">Silver: $4</option>
-		<option value="7" selected="selected">Gold: $5</option>
-		<option value="9">Platinum: $7.50</option>
-		<option value="11">Titanium: $10</option>
-		<option value="13">Ruby: $12.50</option>
-		<option value="15">Topaz: $15</option>
-		<option value="17">Emerald: $17.50</option>
-		<option value="19">Sapphire: $20</option>
-		<option value="21">Diamond: $25</option>
+		<optgroup label="'.__('Supporter Amount').'">
+		<option value="1">'.__('Copper').': $1 </option>
+		<option value="3">'.__('Bronze').': $2</option>
+		<option value="5">'.__('Silver').': $4</option>
+		<option value="7" selected="selected">'.__('Gold').': $5</option>
+		<option value="9">'.__('Platinum').': $7.50</option>
+		<option value="11">'.__('Titanium').': $10</option>
+		<option value="13">'.__('Ruby').': $12.50</option>
+		<option value="15">'.__('Topaz').': $15</option>
+		<option value="17">'.__('Emerald').': $17.50</option>
+		<option value="19">'.__('Sapphire').': $20</option>
+		<option value="21">'.__('Diamond').': $25</option>
 		</select>
 		</td><td width="5"></td><td>
 		<select name="t3" style="font-size:10pt;" id="recurperiod" onchange="switchperiodoptions()">
-		<option selected="selected" value="W">Weekly</option>
-		<option value-"M">Monthly</option>
+		<option selected="selected" value="W">'.__('Weekly').'</option>
+		<option value-"M">'.__('Monthly').'</option>
 		</select></tr></table>
 		<input type="image" src="'.$vdonateimage.'" border="0" name="I1">
 		</center></form>';
 
-	// one time form
-	// echo '
-	//	<center><form id="onetimedonation" style="display:none;" method="POST" action="https://www.paypal.com/cgi-bin/webscr" target="_blank">
-	//	<input type="hidden" name="bn" value="WordQuest_Donate_SF_AU">
-	//	<input type="hidden" name="business" value="contribute@wordquest.org">
-	//	<input type="hidden" id="o_item_name" name="item_name" value="'.$vpluginname.' Donation">
-	//	<input type="hidden" id="o_custom" name="custom" value="'.$vpluginslug.'">
-	//	<input type="hidden" name="item_number" value>
-	//	<input type="hidden" name="currency_code" value="USD">
-	//	<input type="hidden" name="no_shipping" value="1">
-	//	<input type="hidden" name="image_url" value="'.$vwqurl.'/images/wordquest-paypal-logo.jpg">
-	//	<input type="hidden" id="o_return" name="return" value="'.$vwqurl.'/thankyou/?plugin='.$vpluginslug.'">
-	//	<input type="hidden" name="cbt" value="Return to Contribute Page">
-	//	<input type="hidden" id="o_cancel_return" name="cancel_return" value="'.$vwqurl.'/contribute/?plugin='.$vpluginslug.'">
-	//	<input type="hidden" name="no_note" value="0">
-	//	<input type="hidden" name="cn" value="Give a Testimonial and/or Log Feature Request">
-	//	<input type="hidden" name="notify_url" value="'.$vnotifyurl.'">
-	//	<input type="hidden" name="cmd" value="_donations">
-	//	<select name="amount" style="font-size:8pt;" size="1">
-	//	<option selected value="">Select Gift Amount</option>
-	//	<option value="5">$5 - Buy me a Cuppa</option>
-	//	<option value="10">$10 - Buy me Lunch</option>
-	//	<option value="20">$20 - Support a Minor Bugfix</option>
-	//	<option value="50">$50 - Support a Minor Update</option>
-	//	<option value="100">$100 - Support a Major Bugfix/Update</option>
-	//	<option value="250">$250 - Support a Minor Feature</option>
-	//	<option value="500">$500 - Support a Major Feature</option>
-	//	<option value="1000">$1000 - Improve my Outsourcing Budget</option>
-	//	<option value="">Be Unique: Enter Custom Amount</option>
-	//	</select>
-	//	<input type="image" src="'.$vdonateimage.'" border="0" name="I1">
-	//	</center></form>
-	// ';
-
-	// $vwqurl.'/?wp_eStore_donation=23&var1_price=AMOUNT&c_input='.$vpluginslug;
+	// $wqurls['wq'].'/?wp_eStore_donation=23&var1_price=AMOUNT&c_input='.$vpluginslug;
 	echo '
-	<center><form id="onetimedonation" style="display:none;" method="GET" action="'.$vwqurl.'" target="_blank">
+	<center><form id="onetimedonation" style="display:none;" method="GET" action="'.$wqurls['wq'].'" target="_blank">
 		<input type="hidden" name="wp_eStore_donation" value="23">
 		<input type="hidden" name="c_input" value="'.$vpluginslug.'">
 		<select name="var1_price" style="font-size:10pt;" size="1">
-		<option selected value="">Select Gift Amount</option>
-		<option value="5">$5 - Buy me a Cuppa</option>
-		<option value="10">$10 - Log a Feature Request</option>
-		<option value="20">$20 - Support a Minor Bugfix</option>
-		<option value="50">$50 - Support a Minor Update</option>
-		<option value="100">$100 - Support a Major Bugfix/Update</option>
-		<option value="250">$250 - Support a Minor Feature</option>
-		<option value="500">$500 - Support a Major Feature</option>
-		<option value="1000">$1000 - Support a New Plugin</option>
-		<option value="">Be Unique: Enter Custom Amount</option>
+		<option selected value="">'.__('Select Gift Amount').'</option>
+		<option value="5">$5 - '.__('Buy me a Cuppa').'</option>
+		<option value="10">$10 - '.__('Log a Feature Request').'</option>
+		<option value="20">$20 - '.__('Support a Minor Bugfix').'</option>
+		<option value="50">$50 - '.__('Support a Minor Update').'</option>
+		<option value="100">$100 - '.__('Support a Major Bugfix/Update').'</option>
+		<option value="250">$250 - '.__('Support a Minor Feature').'</option>
+		<option value="500">$500 - '.__('Support a Major Feature').'</option>
+		<option value="1000">$1000 - '.__('Support a New Plugin').'</option>
+		<option value="">'.__('Be Unique: Enter Custom Amount').'</option>
 		</select>
 		<input type="image" src="'.$vdonateimage.'" border="0" name="I1">
 		</center></form>
@@ -1432,7 +1544,7 @@ $vfuncname = 'wqhelper_sidebar_testimonial_box_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
  $wqfunctions[$vfuncname] = function($vargs) {
 
-	global $current_user; $current_user = wp_get_current_user();
+	global $wqurls, $current_user; $current_user = wp_get_current_user();
 	$vuseremail = $current_user->user_email; $vuserid = $current_user->ID;
 	$vuserdata = get_userdata($vuserid);
 	$vusername = $vuserdata->first_name;
@@ -1456,18 +1568,17 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 		document.getElementById('sendtestimonial').style.display='none';
 	}</script>";
 
-	$vwqurl = 'http://'.'wordquest.org';
-	echo "<center><a href='javascript:void(0);' onclick='showhidetestimonialbox();'>Send me a thank you or testimonial.</a><br>";
+	echo "<center><a href='javascript:void(0);' onclick='showhidetestimonialbox();'>".__('Send me a thank you or testimonial.')."</a><br>";
 	echo "<div id='sendtestimonial' style='display:none;' align='center'>";
-	echo "<center><form action='".$vwqurl."' method='post' target='testimonialbox' onsubmit='submittestimonial();'>";
-	echo "<b>Your Testimonial:</b><br>";
+	echo "<center><form action='".$wqurls['wq']."' method='post' target='testimonialbox' onsubmit='submittestimonial();'>";
+	echo "<b>".__('Your Testimonial').":</b><br>";
 	echo "<textarea rows='5' cols='25' name='message'></textarea><br>";
-	echo "<label for='testimonial_sender'>Your Name:</label> ";
-	echo "<input type='text' placeholder='Your Name... (optional)' style='width:200px;' name='testimonial_sender' value='".$vusername."'><br>";
-	echo "<input type='text' placeholder='Your Website... (optional)' style='width:200px;' name='testimonial_website' value=''><br>";
+	echo "<label for='testimonial_sender'>".__('Your Name').":</label> ";
+	echo "<input type='text' placeholder='".__('Your Name')."... (".__('optional').")' style='width:200px;' name='testimonial_sender' value='".$vusername."'><br>";
+	echo "<input type='text' placeholder='".__('Your Website')."... (".__('optional').")' style='width:200px;' name='testimonial_website' value=''><br>";
 	echo "<input type='hidden' name='sending_plugin_testimonial' value='yes'>";
 	echo "<input type='hidden' name='for_plugin' value='".$vpluginslug."'>";
-	echo "<input type='submit' class='button-secondary' value='Send Testimonial'>";
+	echo "<input type='submit' class='button-secondary' value='".__('Send Testimonial')."'>";
 	echo "</form>";
 	echo "</div>";
 	echo "<iframe name='testimonialbox' id='testimonialbox' frameborder='0' src='javascript:void(0);' style='display:none;' width='250' height='50' scrolling='no'></iframe>";
@@ -1484,24 +1595,32 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	$vpre = $_REQUEST['sidebarprefix'];
 	if (current_user_can('manage_options')) {
 
+		// 1.6.5: check nonce field
+		check_admin_referer($vpre.'_sidebar');
+
 		// 1.5.0: convert to single array of plugin sidebar options
-		$sidebaroptions = get_option($vpre.'_sidebar_options');
-		if ($sidebaroptions == '') {$sidebaroptions = array('installdate'=>date('Y-m-d'));}
-		$sidebaroptions['adsboxoff'] = $_POST[$vpre.'_ads_box_off'];
-		$sidebaroptions['donationboxoff'] = $_POST[$vpre.'_donation_box_off'];
-		$sidebaroptions['reportboxoff'] = $_POST[$vpre.'_report_box_off'];
-		update_option($vpre.'_sidebar_options');
+		$vsidebaroptions = get_option($vpre.'_sidebar_options');
+		if (!$vsidebaroptions) {$vsidebaroptions = array('installdate' => date('Y-m-d'));}
+		$vsidebaroptions['adsboxoff'] = '';	$vsidebaroptions['donationboxoff'] = ''; $vsidebaroptions['reportboxoff'] = '';
+		if ( (isset($_POST[$vpre.'_ads_box_off'])) && ($_POST[$vpre.'_ads_box_off'] == 'checked') ) {$vsidebaroptions['adsboxoff'] = 'checked';}
+		if ( (isset($_POST[$vpre.'_donation_box_off'])) && ($_POST[$vpre.'_donation_box_off'] == 'checked') ) {$vsidebaroptions['donationboxoff'] = 'checked';}
+		if ( (isset($_POST[$vpre.'_report_box_off'])) && ($_POST[$vpre.'_report_box_off'] == 'checked') ) {$vsidebaroptions['reportboxoff'] = 'checked';}
+		update_option($vpre.'_sidebar_options',$vsidebaroptions);
+		// print_r($vsidebaroptions); // debug point
 
 		// Javascript Show/Hide Callbacks
 		echo "<script language='javascript' type='text/javascript'>";
-		if ($vdonationboxoff == 'checked') {echo "parent.document.getElementById('donate').style.display = 'none'; ";}
-		else {echo "parent.document.getElementById('donate').style.display = ''; ";}
-		if ($vreportboxoff == 'checked') {echo "parent.document.getElementById('bonusoffer').style.display = 'none'; ";}
-		else {echo "parent.document.getElementById('bonusoffer').style.display = ''; ";}
-		if ($vadsboxoff == 'checked') {echo "parent.document.getElementById('pluginads').style.display = 'none'; ";}
-		else {echo "parent.document.getElementById('pluginads').style.display = ''; ";}
-		echo "parent.document.getElementById('sidebarsaved').style.display = ''; ";
-		echo "parent.document.getElementById('sidebarsettings').style.display = 'none'; ";
+		echo PHP_EOL."if (parent.document.getElementById('donate')) {";
+		if ($vsidebaroptions['donationboxoff'] == 'checked') {echo "parent.document.getElementById('donate').style.display = 'none';}";}
+		else {echo "parent.document.getElementById('donate').style.display = '';}";}
+		echo PHP_EOL."if (parent.document.getElementById('bonusoffer')) {";
+		if ($vsidebaroptions['reportboxoff'] == 'checked') {echo "parent.document.getElementById('bonusoffer').style.display = 'none';}";}
+		else {echo "parent.document.getElementById('bonusoffer').style.display = '';}";}
+		echo PHP_EOL."if (parent.document.getElementById('pluginads')) {";
+		if ($vsidebaroptions['adsboxoff'] == 'checked') {echo "parent.document.getElementById('pluginads').style.display = 'none';}";}
+		else {echo "parent.document.getElementById('pluginads').style.display = '';}";}
+		echo PHP_EOL."parent.document.getElementById('sidebarsaved').style.display = ''; ";
+		echo PHP_EOL."parent.document.getElementById('sidebarsettings').style.display = 'none'; ";
 		echo "</script>";
 
 		// maybe call Special Update Options
@@ -1511,6 +1630,22 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	exit;
  };
 }
+
+// ---------------------
+// Sticky Kit Javascript
+// ---------------------
+$vfuncname = 'wqhelper_sidebar_stickykitscript_'.$wqhv;
+if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
+ $wqfunctions[$vfuncname] = function() {
+return '<script>/* Sticky-kit v1.1.2 | WTFPL | Leaf Corcoran 2015 | http://leafo.net */
+(function(){var b,f;b=this.jQuery||window.jQuery;f=b(window);b.fn.stick_in_parent=function(d){var A,w,J,n,B,K,p,q,k,E,t;null==d&&(d={});t=d.sticky_class;B=d.inner_scrolling;E=d.recalc_every;k=d.parent;q=d.offset_top;p=d.spacer;w=d.bottoming;null==q&&(q=0);null==k&&(k=void 0);null==B&&(B=!0);null==t&&(t="is_stuck");A=b(document);null==w&&(w=!0);J=function(a,d,n,C,F,u,r,G){var v,H,m,D,I,c,g,x,y,z,h,l;if(!a.data("sticky_kit")){a.data("sticky_kit",!0);I=A.height();g=a.parent();null!=k&&(g=g.closest(k));
+if(!g.length)throw"failed to find stick parent";v=m=!1;(h=null!=p?p&&a.closest(p):b("<div />"))&&h.css("position",a.css("position"));x=function(){var c,f,e;if(!G&&(I=A.height(),c=parseInt(g.css("border-top-width"),10),f=parseInt(g.css("padding-top"),10),d=parseInt(g.css("padding-bottom"),10),n=g.offset().top+c+f,C=g.height(),m&&(v=m=!1,null==p&&(a.insertAfter(h),h.detach()),a.css({position:"",top:"",width:"",bottom:""}).removeClass(t),e=!0),F=a.offset().top-(parseInt(a.css("margin-top"),10)||0)-q,
+u=a.outerHeight(!0),r=a.css("float"),h&&h.css({width:a.outerWidth(!0),height:u,display:a.css("display"),"vertical-align":a.css("vertical-align"),"float":r}),e))return l()};x();if(u!==C)return D=void 0,c=q,z=E,l=function(){var b,l,e,k;if(!G&&(e=!1,null!=z&&(--z,0>=z&&(z=E,x(),e=!0)),e||A.height()===I||x(),e=f.scrollTop(),null!=D&&(l=e-D),D=e,m?(w&&(k=e+u+c>C+n,v&&!k&&(v=!1,a.css({position:"fixed",bottom:"",top:c}).trigger("sticky_kit:unbottom"))),e<F&&(m=!1,c=q,null==p&&("left"!==r&&"right"!==r||a.insertAfter(h),
+h.detach()),b={position:"",width:"",top:""},a.css(b).removeClass(t).trigger("sticky_kit:unstick")),B&&(b=f.height(),u+q>b&&!v&&(c-=l,c=Math.max(b-u,c),c=Math.min(q,c),m&&a.css({top:c+"px"})))):e>F&&(m=!0,b={position:"fixed",top:c},b.width="border-box"===a.css("box-sizing")?a.outerWidth()+"px":a.width()+"px",a.css(b).addClass(t),null==p&&(a.after(h),"left"!==r&&"right"!==r||h.append(a)),a.trigger("sticky_kit:stick")),m&&w&&(null==k&&(k=e+u+c>C+n),!v&&k)))return v=!0,"static"===g.css("position")&&g.css({position:"relative"}),
+a.css({position:"absolute",bottom:d,top:"auto"}).trigger("sticky_kit:bottom")},y=function(){x();return l()},H=function(){G=!0;f.off("touchmove",l);f.off("scroll",l);f.off("resize",y);b(document.body).off("sticky_kit:recalc",y);a.off("sticky_kit:detach",H);a.removeData("sticky_kit");a.css({position:"",bottom:"",top:"",width:""});g.position("position","");if(m)return null==p&&("left"!==r&&"right"!==r||a.insertAfter(h),h.remove()),a.removeClass(t)},f.on("touchmove",l),f.on("scroll",l),f.on("resize",
+y),b(document.body).on("sticky_kit:recalc",y),a.on("sticky_kit:detach",H),setTimeout(l,0)}};n=0;for(K=this.length;n<K;n++)d=this[n],J(b(d));return this}}).call(this);</script>';
+ };
+} // '
 
 // ---------------------
 // Float Menu Javascript
@@ -1800,8 +1935,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 		var catslug = selectelement.options[selectelement.selectedIndex].value;
 		var siteurl = encodeURIComponent(siteurl);
 		document.getElementById('feedcatloader').src='admin-ajax.php?action=wqhelper_load_feed_category&category='+catslug+'&namespace='+namespace+'&siteurl='+siteurl;
-	}
-	</script>";
+	}</script>";
 	echo "<iframe src='javascript:void(0);' id='feedcatloader' style='display:none;'></iframe>";
  };
 }
@@ -1812,62 +1946,111 @@ $vfuncname = 'wqhelper_dashboard_feed_widget_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
  $wqfunctions[$vfuncname] = function() {
 
-	echo "<style>.feedlink {text-decoration:none;} .feedlink:hover {text-decoration:underline;}</style>";
-
 	// maybe Get Latest Release info
 	// -----------------------------
-	// $vplugininfo = wqhelper_get_plugin_info();
-	// if (is_array($vplugininfo)) {
-	//	foreach ($vplugininfo as $vplugin) {
-	//		if (isset($vplugin['slug''])) {
-	//			if ( (isset($vplugin['latestrelease'])) && ($vplugin['latestrelease'] == 'yes') ) {
-	//				$vlatestrelease['slug'] = $vplugin['slug'];
-	//				if (isset($vplugin['title'])) {$vlatestrelease['title'] = $vplugin['title'];}
-	//				if (isset($vplugin['home'])) {$vlatestrelease['home'] = $vplugin['home'];}
-	//				if (isset($vplugin['description'])) {$vlatestrelease['description'] = $vplugin['description'];}
-	//				if (isset($vplugin['icon'])) {$vlatestrelease['icon'] = $vplugin['icon'];}
-	//				if (isset($vplugin['cats'])) {$vlatestrelease['cats'] = $vplugin['cats'];}
-	//				if (isset($vplugin['tags'])) {$vlatestrelease['tags'] = $vplugin['tags'];}
-	//				if (isset($vplugin['paidplans'])) {$vlatestrelease['paidplans'] = $vplugin['paidplans'];}
-	//				if (isset($vplugin['package'])) {$vlatestrelease['package'] = $vplugin['package'];}
-	//			}
-	//		}
-	//	}
-	// }
+	global $wqdebug, $wqreleases, $wqurls;
+	$vlatestrelease = ''; $vnextrelease = '';
+	if (isset($wqreleases)) {
+		if (isset($wqreleases['latest'])) {$vlatestrelease = $wqreleases['latest'];}
+		if (isset($wqreleases['next'])) {$vnextrelease = $wqreleases['next'];}
+	} else {
+		$vpluginsinfo = wqhelper_get_plugin_info();
+		if (is_array($vpluginsinfo)) {
+			foreach ($vpluginsinfo as $vplugin) {
+				if (isset($vplugin['slug'])) {
+					if ( ( (isset($vplugin['latestrelease'])) && ($vplugin['latestrelease'] == 'yes') )
+					    || ( (isset($vplugin['nextrelease'])) && ($vplugin['nextrelease'] == 'yes') ) ) {
+						$vplugininfo = $vplugin; $vplugins = get_plugins(); $vplugininfo['installed'] = 'no';
+						foreach ($vplugins as $vpluginfile => $vvalues) {
+							if ($vplugininfo['slug'] == sanitize_title($vvalues['Name'])) {$vplugininfo['installed'] = 'yes';}
+						}
+					}
+					if ( (isset($vplugin['latestrelease'])) && ($vplugin['latestrelease'] == 'yes') ) {$vlatestrelease = $vplugininfo;}
+					if ( (isset($vplugin['nextrelease'])) && ($vplugin['nextrelease'] == 'yes') ) {$vnextrelease = $vplugininfo;}
+				}
+			}
+		}
+	}
+	// echo "<!-- Latest Release: "; print_r($vlatestrelease); echo " -->";
+ 	// echo "<!-- Next Release: "; print_r($vnextrelease); echo " -->";
+
 
 	// maybe Display Latest Release Info
 	// ---------------------------------
-	// if (is_array($vlatestrelease)) {
-	//  echo "<b>Latest Plugin Release</b><br>";
-	//	echo "<table><tr><td><img src='".$vlatestrelease['icon']."'></td><td width='10'></td>";
-	//	echo "<td>".$vlatestrelease['description']."<br><br>";
-	//	echo "<a href='".$vlatestrelease['home']."' target=_blank>&rarr; ".$vlatestrelease['title']."</a>";
-	//	echo "</td></tr></table>";
-	// }
+	if ( (isset($_REQUEST['page'])) && ($_REQUEST['page'] == 'wordquest') ) {
+		// do not duplicate here as already output for wordquest page
+	} elseif ( (isset($vlatestrelease)) && (is_array($vlatestrelease)) && ($vlatestrelease['installed'] == 'no') ) {
+		$vinstalllink = wp_nonce_url(admin_url('update.php').'?action=wordquest_plugin_install&plugin='.$vlatestrelease['slug'],'plugin-upload');
+		echo "<b>".__('Latest Plugin Release')."</b><br>";
+		echo "<table><tr><td align='center'><img src='".$vlatestrelease['icon']."' width='75' height='75'><br>";
+		echo "<a href='".$vlatestrelease['home']."' target=_blank><b>".$vlatestrelease['title']."</b></a></td>";
+		echo "<td width='10'></td><td><span style='font-size:9pt;'>".$vlatestrelease['description']."</span><br><br>";
+		if ( (isset($vlatestrelease['package'])) && (is_array($vlatestrelease['package'])) ) {
+			echo "<center><a href='".$vinstalllink."' class='button-primary'>".__('Install Now')."</a></center>";
+		}
+		echo "</td></tr></table><br>";
+	} elseif ( (isset($vnextrelease)) && (is_array($vnextrelease)) ) {
+		echo "<b>".__('Upcoming Plugin Release')."</b><br>";
+		echo "<table><tr><td align='center'><img src='".$vnextrelease['icon']."' width='75' height='75'><br>";
+		echo "<a href='".$vnextrelease['home']."' target=_blank><b>".$vnextrelease['title']."</b></a></td>";
+		echo "<td width='10'></td><td><span style='font-size:9pt;'>".$vnextrelease['description']."</span><br><br>";
+		$vreleasetime = strtotime($vnextrelease['releasedate']);
+		echo "<center><span style='font-size:9pt;'>".__('Expected').": ".date('jS F Y',$vreleasetime)."</span></center>";
+		echo "</td></tr></table><br>";
+	}
 
-	// Load WordQuest Feed
-	// -------------------
-	$vbaseurl = "http://"."wordquest.org";
-	$vrssurl = $vbaseurl."/feed/";
-	$vfeed = trim(get_transient('wqhelper_feed'));
+	echo "<style>.feedlink {text-decoration:none;} .feedlink:hover {text-decoration:underline;}</style>";
+
+	// WordQuest Posts Feed
+	// --------------------
+	$vrssurl = $wqurls['wq']."/category/guides/feed/";
+	if ($wqdebug) {$vfeed = ''; delete_transient('wordquest_guides_feed');}
+	else {$vfeed = trim(get_transient('wordquest_guides_feed'));}
+
 	if ( (!$vfeed) || ($vfeed == '') ) {
-		$vrssfeed = fetch_feed($vrssurl);
-		$vfeeditems = 5;
+		$vrssfeed = fetch_feed($vrssurl); $vfeeditems = 4;
 		$vargs = array($vrssfeed,$vfeeditems);
 		$vfeed = wqhelper_process_rss_feed($vargs);
-		if ($vfeed != '') {set_transient('wordquest_feed',$vfeed,(24*60*60));}
+		if ($vfeed != '') {set_transient('wordquest_guides_feed',$vfeed,(24*60*60));}
 	}
-	echo "<div id='wqnewsdisplay'>";
-	if ($vfeed != '') {echo "<b>WordQuest Alliance</b><br>".$vfeed."<div align='right'>&rarr;<a href='".$vbaseurl."/blog/' class='feedlink' target=_blank> More...</a></div>";}
-	else {echo "Feed Currently Unavailable.<br>"; delete_transient('wordquest_feed');}
+
+	echo "<div id='wordquestguides'>";
+	echo "<div style='float:right;'>&rarr;<a href='".$wqurls['wq']."/category/guides/' class='feedlink' target=_blank> ".__('More')."...</a></div>";
+	echo "<b><a href='".$wqurls['wq']."/category/guides/' class='feedlink' target=_blank>".__('Latest WordQuest Guides')."</a></b><br>";
+	if ($vfeed != '') {echo $vfeed;} else {echo __('Feed Currently Unavailable.'); delete_transient('wordquest_guides_feed');}
 	echo "</div>";
+
+	// WordQuest Solutions Feed
+	// ------------------------
+	$vrssurl = $wqurls['wq']."/quest/feed/";
+	if ($wqdebug) {$vfeed = ''; delete_transient('wordquest_quest_feed');}
+	else {$vfeed = trim(get_transient('wordquest_quest_feed'));}
+
+	if ( (!$vfeed) || ($vfeed == '') ) {
+		$vrssfeed = fetch_feed($vrssurl); $vfeeditems = 4;
+		$vargs = array($vrssfeed,$vfeeditems);
+		$vfeed = wqhelper_process_rss_feed($vargs);
+		if ($vfeed != '') {set_transient('wordquest_quest_feed',$vfeed,(24*60*60));}
+	}
+
+	echo "<div id='wordquestsolutions'>";
+	echo "<div style='float:right;'>&rarr;<a href='".$wqurls['wq']."/solutions/' class='feedlink' target=_blank> ".__('More')."...</a></div>";
+	echo "<b><a href='".$wqurls['wq']."/solutions/' class='feedlink' target=_blank>".__('Latest Solution Quests')."</a></b>";
+	if ($vfeed != '') {echo $vfeed;} else {echo __('Feed Currently Unavailable.'); delete_transient('wordquest_quest_feed');}
+	echo "</div>";
+
+	return;
+
+	// --------------------------
+	// currently not implented...
 
 	// Category Feed Selection
 	// -----------------------
-	$vpluginsurl = $vbaseurl."/?get_post_categories=yes";
+	$vpluginsurl = $wqurls['wq']."/?get_post_categories=yes";
 
-	// refresh once a day only to limit downloads
-	$vcategorylist = trim(get_transient('wordquest_feed_cats'));
+	if ($wqdebug) {$vcategorylist = ''; delete_transient('wordquest_feed_cats');}
+	else {$vcategorylist = trim(get_transient('wordquest_feed_cats'));}
+
 	if ( (!$vcategorylist) || ($vcategorylist == '') ) {
 		$vargs = array('timeout' => 10);
 		$vgetcategorylist = wp_remote_get($vpluginsurl,$vargs);
@@ -1890,9 +2073,9 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 			}
 
 			if (count($vcats) > 0) {
-				echo "<table><tr><td><b>Category:</b></td>";
+				echo "<table><tr><td><b>".__('Category').":</b></td>";
 				echo "<td width='7'></td>";
-				echo "<td><select id='wqcatselector' onchange='doloadfeedcat(\"wq\",\"http://"."wordquest.org\");'>";
+				echo "<td><select id='wqcatselector' onchange='doloadfeedcat(\"wq\",\"".$wqurls['wq']."\");'>";
 				// echo "<option value='news' selected='selected'>WordQuest News</option>";
 				foreach ($vcats as $vcat) {
 					echo "<option value='".$vcat['slug']."'";
@@ -1915,30 +2098,62 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 	echo "<style>.feedlink {text-decoration:none;} .feedlink:hover {text-decoration:underline;}</style>";
 
-	// Load PRN Feed
-	// -------------
-	$vbaseurl = "http://pluginreview.net";
-	$vrssurl = $vbaseurl."/feed/";
-	$vfeed = trim(get_transient('prn_feed'));
+	// Latest Plugins Feed
+	// -------------------
+	global $wqdebug, $wqurls;
+	$vrssurl = $wqurls['prn']."/feed/";
+	if ($wqdebug) {$vfeed = ''; delete_transient('pluginreview_newest_feed');}
+	else {$vfeed = trim(get_transient('pluginreview_newest_feed'));}
+
 	if ( (!$vfeed) || ($vfeed == '') ) {
-		$vrssfeed = fetch_feed($vrssurl);
-		$vfeeditems = 5;
+		$vrssfeed = fetch_feed($vrssurl); $vfeeditems = 4;
 		$vargs = array($vrssfeed,$vfeeditems);
 		$vfeed = wqhelper_process_rss_feed($vargs);
-		if ($vfeed != '') {set_transient('prn_feed',$vfeed,(24*60*60));}
+		if ($vfeed != '') {set_transient('pluginreview_newest_feed',$vfeed,(24*60*60));}
 	}
-	echo "<div id='prnnewsdisplay'>";
-	if ($vfeed != '') {echo "<b>Plugin Review Network</b><br>".$vfeed."<div align='right'>&rarr;<a href='".$vbaseurl."/blog/' class='feedlink' target=_blank> More...</a></div>";}
-	else {echo "Feed Currently Unavailable<br>"; delete_transient('prn_feed');}
+
+	echo "<center><b><a href='".$wqurls['prn']."/directory/' class='feedlink' target=_blank>".__('Plugin Directory')." - ".__('by Category')."!</a></b></center><br>";
+
+	echo "<div id='pluginslatest'>";
+	echo "<div style='float:right;'>&rarr;<a href='".$wqurls['prn']."/directory/latest/' class='feedlink' target=_blank> ".__('More')."...</a></div>";
+	if ($vfeed != '') {echo "<b>".__('Latest Plugin Releases')."</b><br>".$vfeed;}
+	else {echo __('Feed Currently Unavailable'); delete_transient('prn_feed');}
 	echo "</div>";
+
+	// return; // temp
+
+	// Recently Updated Feed
+	// ---------------------
+	$vrssurl = $wqurls['prn']."/feed/?orderby=modified";
+	if ($wqdebug) {$vfeed = ''; delete_transient('pluginreview_updated_feed');}
+	else {$vfeed = trim(get_transient('pluginreview_updated_feed'));}
+
+	if ( (!$vfeed) || ($vfeed == '') ) {
+		$vrssfeed = fetch_feed($vrssurl); $vfeeditems = 4;
+		$vargs = array($vrssfeed,$vfeeditems);
+		$vfeed = wqhelper_process_rss_feed($vargs);
+		if ($vfeed != '') {set_transient('pluginreview_updated_feed',$vfeed,(24*60*60));}
+	}
+
+	echo "<div id='pluginsupdated'>";
+	echo "<div style='float:right;'>&rarr;<a href='".$wqurls['prn']."/directory/updated/' class='feedlink' target=_blank> ".__('More')."...</a></div>";
+	if ($vfeed != '') {echo "<b>".__('Recently Updated Plugins')."</b><br>".$vfeed;}
+	else {echo __('Feed Currently Unavailable'); delete_transient('prn_feed');}
+	echo "</div>";
+
+	return;
+
+	// --------------------------
+	// currently not implented...
 
 	// Category Feed Selection
 	// -----------------------
-	$vbaseurl = "http://pluginreview.net";
-	$vcategoryurl = $vbaseurl."/?get_review_categories=yes";
+	$vcategoryurl = $wqurls['prn']."/?get_review_categories=yes";
 
 	// refresh once a day only to limit downloads
-	$vcategorylist = trim(get_transient('prn_feed_cats'));
+	if ($wqdebug) {$vcategorylist = ''; delete_transient('prn_feed_cats');}
+	else {$vcategorylist = trim(get_transient('prn_feed_cats'));}
+
 	if ( (!$vcategorylist) || ($vcategorylist == '') ) {
 		$vargs = array('timeout' => 10);
 		$vgetcategorylist = wp_remote_get($vcategoryurl,$vargs);
@@ -1961,10 +2176,10 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 			}
 
 			if (count($vcats) > 0) {
-				echo "<table><tr><td><b>Review Category:</b></td>";
+				echo "<table><tr><td><b>".__('Category').":</b></td>";
 				echo "<td width='7'></td>";
-				echo "<td><select id='prncatselector' onchange='doloadfeedcat(\"prn\",\"http://pluginreview.net\");'>";
-				// echo "<option value='reviews' selected='selected'>Plugin Reviews</option>";
+				echo "<td><select id='prncatselector' onchange='doloadfeedcat(\"prn\",\"".$wqurls['prn']."\");'>";
+				// echo "<option value='reviews' selected='selected'>".__('Plugin Reviews')."</option>";
 				foreach ($vcats as $vcat) {
 					echo "<option value='".$vcat['slug']."'";
 					if ($vcat['slug'] == 'reviews') {echo " selected='selected'";}
@@ -1978,8 +2193,8 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
  };
 }
 
-// Load Category Feed
-// ------------------
+// Load a Category Feed
+// --------------------
 $vfuncname = 'wqhelper_load_feed_category_'.$wqhv;
 if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname])) ) {
  $wqfunctions[$vfuncname] = function() {
@@ -1989,11 +2204,9 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	$vcatslug = $_GET['category'];
 
 	$vcategoryurl = $vbaseurl."/category/".$vcatslug."/feed/";
-	echo $vcategoryurl;
 	$vmorelink = "<div align='right'>&rarr; <a href='".$vbaseurl."/category/".$vcatslug."/' style='feedlink' target=_blank> More...</a></div>";
 
-	$vcategoryrss = @fetch_feed($vcategoryurl);
-	$vfeeditems = 10;
+	$vcategoryrss = @fetch_feed($vcategoryurl); $vfeeditems = 10;
 
 	// Process the Feed
 	// ----------------
@@ -2017,7 +2230,6 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
  $wqfunctions[$vfuncname] = function($vargs) {
 
 	$vrss = $vargs[0]; $vfeeditems = $vargs[1]; $vprocessed = '';
-
 	if (is_wp_error($vrss)) {return '';}
 
 	$vmaxitems = $vrss->get_item_quantity($vfeeditems);
@@ -2025,7 +2237,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 	if ($vmaxitems == 0) {$vprocessed = "";}
 	else {
-		$vprocessed = "<ul style='list-style:none;'>";
+		$vprocessed = "<ul style='list-style:none;margin:0;text-align:left;'>";
 		foreach ($vrssitems as $vitem) {
 			$vprocessed .= "<li>&rarr; <a href='".esc_url($vitem->get_permalink())."' class='feedlink' target='_blank' ";
 			$vprocessed .= "title='Posted ".$vitem->get_date('j F Y | g:i a')."'>";
@@ -2033,8 +2245,6 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 		}
 		$vprocessed .= "</ul>";
 	}
-
-	// echo "***".$vprocessed."***";
 	return $vprocessed;
  };
 }
