@@ -4,9 +4,10 @@
 Plugin Name: AutoSave Net
 Plugin URI: http://wordquest.org/plugins/autosave-net/
 Description: Auto-save safety net! Timed Backup of your Post Content while writing, with instant compare and restore content metabox.
-Version: 1.2.5
+Version: 1.3.0
 Author: Tony Hayes
 Author URI: http://dreamjester.net
+GitHub Plugin URI: majick777/autosave-net
 */
 
 if (!function_exists('add_action')) {exit;}
@@ -27,11 +28,12 @@ if (!function_exists('add_action')) {exit;}
 // -----------------
 global $wordquestplugins;
 $vslug = $vasnslug = 'autosave-net';
-$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.2.5';
+$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.3.0';
 $wordquestplugins[$vslug]['title'] = 'AutoSave Net';
 $wordquestplugins[$vslug]['namespace'] = 'autosave_net';
 $wordquestplugins[$vslug]['settings'] = 'asn';
-// $wordquestplugins[$vslug]['wporgslug'] = 'autosave-net';
+$wordquestplugins[$vslug]['hasplans'] = false;
+$wordquestplugins[$vslug]['wporgslug'] = 'autosave-net';
 define('AUTOSAVENET_VERSION',$vautosavenetversion); // for theme
 define('QUICKSAVE_VERSION',$vautosavenetversion); // back compat
 
@@ -59,6 +61,7 @@ function asn_freemius($vslug) {
     global $wordquestplugins, $asn_freemius;
     $vwporg = $wordquestplugins[$vslug]['wporg'];
     if ($wordquestplugins[$vslug]['plan'] == 'premium') {$vpremium = true;} else {$vpremium = false;}
+    $vhasplans = $wordquestplugins[$vslug]['hasplans'];
 
 	// redirect for support forum
 	if ( (is_admin()) && (isset($_REQUEST['page'])) ) {
@@ -77,7 +80,7 @@ function asn_freemius($vslug) {
             'public_key'        => 'pk_4c378ea656ccc7fb19bb6227eecca',
             'is_premium'        => $vpremium,
             'has_addons'        => false,
-            'has_paid_plans'    => false,
+            'has_paid_plans'    => $vhasplans,
             'is_org_compliant'  => $vwporg,
             'menu'              => array(
                 'slug'       	=> $vslug,
@@ -99,7 +102,7 @@ $asn_freemius = asn_freemius($vslug);
 function asn_freemius_connect($message, $user_first_name, $plugin_title, $user_login, $site_link, $freemius_link) {
 	return sprintf(
 		__fs('hey-x').'<br>'.
-		__('In order to enjoy all our features and functionality, %s needs to connect your user, %s at %s, to %s', 'wp-automedic'),
+		__('If you want to more easily provide feedback for this plugins features and functionality, %s can connect your user, %s at %s, to %s', 'autosave-net'),
 		$user_first_name, '<b>'.$plugin_title.'</b>', '<b>'.$user_login.'</b>', $site_link, $freemius_link
 	);
 }
@@ -111,7 +114,7 @@ $asn_freemius->add_filter('connect_message', 'asn_freemius_connect', WP_FS__DEFA
 if (is_admin()) {add_action('admin_menu','asn_settings_menu',1);}
 function asn_settings_menu() {
 	if (empty($GLOBALS['admin_page_hooks']['wordquest'])) {
-		$vicon = plugin_dir_url(__FILE__).'images/wordquest-icon.png'; $vposition = apply_filters('wordquest_menu_position','3');
+		$vicon = plugins_url('images/wordquest-icon.png',__FILE__); $vposition = apply_filters('wordquest_menu_position','3');
 		add_menu_page('WordQuest Alliance', 'WordQuest', 'manage_options', 'wordquest', 'wqhelper_admin_page', $vicon, $vposition);
 	}
 	add_submenu_page('wordquest', 'AutoSave Net', 'AutoSave Net', 'manage_options', 'autosave-net', 'autosave_net_options_page');
@@ -121,7 +124,7 @@ function asn_settings_menu() {
 	add_action('admin_footer','asn_admin_javascript');
 	function asn_admin_javascript() {
 		global $vasnslug; $vslug = $vasnslug; $vcurrent = '0';
-		$vicon = plugin_dir_url(__FILE__).'images/icon.png';
+		$vicon = plugins_url('images/icon.png',__FILE__);
 		if (isset($_REQUEST['page'])) {if ($_REQUEST['page'] == $vslug) {$vcurrent = '1';} }
 		echo "<script>jQuery(document).ready(function() {if (typeof wordquestsubmenufix == 'function') {
 		wordquestsubmenufix('".$vslug."','".$vicon."','".$vcurrent."');} });</script>";
@@ -176,7 +179,6 @@ global $vasnoptions; $vasnoptions = get_option('autosave_net');
 // ------------------------
 function autosave_net_get_option($vkey,$vfilter=false) {
 	global $vasnoptions;
-	// $vkey = str_replace('fcs_','',$vkey);
 	if (isset($vasnoptions[$vkey])) {
 		if ($vfilter) {return apply_filters($vkey,$vasnoptions[$vkey]);}
 		else {return $vasnoptions[$vkey];}
@@ -213,6 +215,7 @@ if ( (isset($_POST['autosave_net_save_options'])) && ($_POST['autosave_net_save_
 	add_action('init','autosave_net_update_options');
 }
 
+// 1.3.0: added option validation
 function autosave_net_update_options() {
 
 	if (!current_user_can('manage_options')) {return;}
@@ -224,11 +227,13 @@ function autosave_net_update_options() {
 	check_admin_referer('autosave_net');
 
 	// QuickSave Timer
-	$vasnoptions['quicksave_timer'] = $_POST['quicksave_timer'];
+	$vquicksavetimer = $_POST['quicksave_timer'];
+	if ( (!is_numeric($vquicksavetimer)) || ($vquicksavetimer < 1) ) {$vquicksavetimer = 60;}
+	$vasnoptions['quicksave_timer'] = $vquicksavetimer;
 
 	// Quicksave Post Types
 	$vcpts[0] = 'page'; $vcpts[1] = 'post';
-	$vargs = array('public'=>false, '_builtin' => false);
+	$vargs = array('public' => false, '_builtin' => false);
 	$vcptlist = get_post_types($vargs,'names','and');
 	$vdefaultcpts = array_merge($vcpts,$vcptlist);
 	$vposttypearray = array();
@@ -249,13 +254,19 @@ function autosave_net_update_options() {
 	$vasnoptions['quicksave_notice_screens'] = $vscreens;
 
 	// QuickSave Icons
-	$vasnoptions['quicksave_icons'] = $_POST['quicksave_icons'];
+	$vquicksaveicons = $_POST['quicksave_icons'];
+	if ( ($vquicksaveicons != 'dash') && ($vquicksaveicons != 'colour') ) {$vquicksaveicons = 'colour';}
+	$vasnoptions['quicksave_icons'] = $vquicksaveicons;
 
 	// WordPress AutoSave options
-	if (isset($_POST['autosave_disable'])) {$vasnoptions['autosave_disable'] = $_POST['autosave_disable'];}
+	if ( (isset($_POST['autosave_disable'])) && ($_POST['autosave_disable'] == '1') ) {$vasnoptions['autosave_disable'] = '1';}
 	else {$vasnoptions['autosave_disable'] = '';}
-	$vasnoptions['autosave_revisions'] = $_POST['autosave_revisions'];
-	$vasnoptions['autosave_time'] = $_POST['autosave_time'];
+	$vautosaverevisions = $_POST['autosave_revisions'];
+	if (!is_numeric($vautosaverevisions)) {$vautosaverevisions = '';}
+	$vasnoptions['autosave_revisions'] = $vautosaverevisions;
+	$vautosavetime = $_POST['autosave_time'];
+	if (!is_numeric($vautosavetime)) {$vautosavetime = '';}
+	$vasnoptions['autosave_time'] = $vautosavetime;
 
 	update_option('autosave_net',$vasnoptions);
 }
@@ -268,18 +279,55 @@ function autosave_net_options_page() {
 	// 1.2.5: use global option array
 	global $vautosavenetversion, $vasnoptions, $vasnslug;
 
-	echo "<div class='wrap'>";
+	echo "<div id='pagewrap' class='wrap' style='width:100%;margin-right:0px !important;'>";
+
 	// Admin Notices Boxer
+	// -------------------
 	if (function_exists('wqhelper_admin_notice_boxer')) {wqhelper_admin_notice_boxer();} else {echo "<h2> </h2>";}
+
+	// Sidebar Floatbox
+	// ----------------
+	global $vautosavenetversion;
+	// $vargs = array('asn','autosave-net','free','autosave-net','yes','AutoSave Net',$vautosavenetversion);
+	$vargs = array('autosave-net','yes'); // trimmed settings
+	if (function_exists('wqhelper_sidebar_floatbox')) {
+		wqhelper_sidebar_floatbox($vargs);
+
+		// 1.3.0: replace floatbox with stickykit
+		echo wqhelper_sidebar_stickykitscript();
+		echo "<style>#floatdiv {float:right;}</style>";
+		echo '<script>jQuery("#floatdiv").stick_in_parent();
+		wrapwidth = jQuery("#pagewrap").width(); sidebarwidth = jQuery("#floatdiv").width();
+		newwidth = wrapwidth - sidebarwidth;
+		jQuery("#wrapbox").css("width",newwidth+"px");
+		jQuery("#adminnoticebox").css("width",newwidth+"px");
+		</script>';
+
+		// echo wqhelper_sidebar_floatmenuscript();
+		// echo '<script language="javascript" type="text/javascript">
+		// floatingMenu.add("floatdiv", {targetRight: 10, targetTop: 20, centerX: false, centerY: false});
+		// function move_upper_right() {
+		//	floatingArray[0].targetTop=20;
+		//	floatingArray[0].targetBottom=undefined;
+		//	floatingArray[0].targetLeft=undefined;
+		//	floatingArray[0].targetRight=10;
+		//	floatingArray[0].centerX=undefined;
+		//	floatingArray[0].centerY=undefined;
+		// }
+		// move_upper_right();</script>';
+	}
 
 	// Plugin Page Title
 	// -----------------
-	$viconurl = plugin_dir_url(__FILE__)."images/autosave-net.png";
+	$viconurl = plugins_url("images/autosave-net.png",__FILE__);
 	echo "<table><tr><td><img src='".$viconurl."'></td>";
-	echo "<td width='20'></td>";
-	echo "<td><h2>AutoSave Net</h2></td>";
-	echo "<td width='20'></td>";
-	echo "<td><h3><i>v".$vautosavenetversion."</i></h3></td>";
+	echo "<td width='20'></td><td>";
+		echo "<table><tr><td><h2>AutoSave Net</h2></td>";
+		echo "<td width='20'></td>";
+		echo "<td><h3><i>v".$vautosavenetversion."</i></h3></td></tr>";
+		echo "<tr><td colspan='3' align='center'>".__('by','autosave-net');
+		echo " <a href='http://wordquest.org/' style='text-decoration:none;' target=_blank><b>WordQuest Alliance</b></a>";
+		echo "</td></tr></table>";
 	echo "</td><td width='100'></td>";
 	if ( (isset($_REQUEST['updated'])) && ($_REQUEST['updated'] == 'yes') ) {
 		echo "<td><table style='background-color: lightYellow; border-style:solid; border-width:1px; border-color: #E6DB55; text-align:center;'>";
@@ -288,24 +336,26 @@ function autosave_net_options_page() {
 	}
 	echo "</tr></table><br>";
 
+	echo "<div id='wrapbox' class='postbox' style='width:680px;line-height:2em;'><div class='inner' style='padding-left:20px;'>";
+
 	echo "<form method='post' action='admin.php?page=".$vasnslug."&updated=yes'>";
 	// 1.2.5: add nonce field
 	wp_nonce_field('autosave_net');
 	echo "<input type='hidden' name='autosave_net_save_options' value='yes'>";
-	echo "<table cellpadding='5' cellspacing='5'>";
+	echo "<table cellpadding='0' cellspacing='0'>";
 
 	// QuickSave Options
 	// -----------------
 	echo "<tr><td><b>QuickSave</td></tr><tr height='10'><td> </td></tr>";
 
 	// Quicksave Interval Time
-	echo "<tr><td>".__('QuickSave Interval Time','autosave-net')."</td><td width='10'></td>";
-	echo "<td><input type='text' name='quicksave_timer' value='".$vasnoptions['quicksave_timer']."'></td>";
+	echo "<tr height='40'><td>".__('QuickSave Interval Time','autosave-net')."</td><td width='10'></td>";
+	echo "<td><input type='text' name='quicksave_timer' value='".$vasnoptions['quicksave_timer']."' size='5'></td>";
 	echo "<td width='10'></td><td>(".__('global default for QuickSave Backups.','autosave-net').")</td></tr>";
 
 	// Quicksave Post Types
-	echo "<tr><td style='vertical-align:top;'>".__('QuickSave Post Types','autosave-net')."</td><td width='10'></td>";
-	echo "<td>";
+	echo "<tr height='40'><td style='vertical-align:top;'>".__('QuickSave Post Types','autosave-net')."</td>";
+	echo "<td width='10'></td><td>";
 	$vcpts[0] = 'page'; $vcpts[1] = 'post';
 	$vargs = array('public'=>false, '_builtin' => false);
 	$vcptlist = get_post_types($vargs,'names','and');
@@ -316,15 +366,16 @@ function autosave_net_options_page() {
 		if (in_array($vcpt,$vquicksaveposttypes)) {echo " checked";}
 		echo "> ".strtoupper(substr($vcpt,0,1)).substr($vcpt,1,strlen($vcpt))."<br>";
 	}
-	echo "</td><td width='10'></td><td>(".__('post types to activate QuickSave for.','autosave-net').")</td></tr>";
+	echo "</td><td width='10'></td>";
+	echo "<td style='vertical-align:top;'>(".__('post types to activate QuickSave for.','autosave-net').")</td></tr>";
 
 	// Quicksave Post Screens
 	$vnoticescreens = implode(',',$vasnoptions['quicksave_notice_screens']);
-	echo "<tr><td>".__('QuickSave Notice Screens','autosave-net')."</td><td width='10'></td>";
+	echo "<tr height='40'><td>".__('QuickSave Notice Screens','autosave-net')."</td><td width='10'></td>";
 	echo "<td><input type='text' name='quicksave_notice_screens' value='".$vnoticescreens."' size='20'></td>";
-	echo "<td width='10'></td><td>(".__('additional screens to serve QuickSave notices on.','autosave-net').")</tr>";
+	echo "<td width='10'></td><td>(".__('admin screens to show QuickSave notices on.','autosave-net').")</tr>";
 
-	echo "<tr><td>".__('QuickSave Icons','autosave-net')."</td><td width='10'></td>";
+	echo "<tr height='40'><td>".__('QuickSave Icons','autosave-net')."</td><td width='10'></td>";
 	echo "<td><input type='radio' name='quicksave_icons' value='dash'";
 	if ($vasnoptions['quicksave_icons'] == 'dash') {echo " checked";}
 	echo ">".__('Dashicons','autosave-net');
@@ -338,52 +389,29 @@ function autosave_net_options_page() {
 
 	// WordPress AutoSave Options
 	// --------------------------
-	echo "<tr><td><b>".__('WordPress AutoSave','autosave-net')."</td></tr><tr height='10'><td> </td></tr>";
-	echo "<tr><td>".__('Disable WordPress AutoSave','autosave-net')."</td><td width='10'></td>";
+	echo "<tr height='40'><td><b>".__('WordPress AutoSave','autosave-net')."</td></tr><tr height='10'><td> </td></tr>";
+	echo "<tr height='40'><td>".__('Disable WordPress AutoSave','autosave-net')."</td><td width='10'></td>";
 	echo "<td><input type='checkbox' name='autosave_disable' value='1'";
 	if ($vasnoptions['autosave_disable'] == '1') {echo " checked";}
 	echo "></td>";
 	echo "<td width='10'><td>(".__('turns off WordPress AutoSave completely.','autosave-net').")</td></tr>";
 
-	echo "<tr><td>".__('Limit AutoSave Post Revisions','autosave-net')."</td><td width='10'></td>";
-	echo "<td><input type='text' name='autosave_revisions' value='".$vasnoptions['autosave_revisions']."'></td>";
+	echo "<tr height='40'><td>".__('Limit AutoSave Post Revisions','autosave-net')."</td><td width='10'></td>";
+	echo "<td><input type='text' name='autosave_revisions' value='".$vasnoptions['autosave_revisions']."' size='5'></td>";
 	echo "<td width='10'></td><td>(".__('number of AutoSave Revisions per post.','autosave-net').")</td></tr>";
 
-	echo "<tr><td>".__('AutoSave Interval Time','autosave-net')."</td><td width='10'></td>";
-	echo "<td><input type='text' name='autosave_time' value='".$vasnoptions['autosave_time']."'></td>";
+	echo "<tr height='40'><td>".__('AutoSave Interval Time','autosave-net')."</td><td width='10'></td>";
+	echo "<td><input type='text' name='autosave_time' value='".$vasnoptions['autosave_time']."' size='5'></td>";
 	echo "<td width='10'></td><td>(".__('time in seconds between WordPress AutoSaves','autosave-net').")</td></tr>";
 
 	echo "<tr height='20'><td> </td></tr>";
 	echo "<tr><td colspan='2'></td><td align='center'>";
 	echo "<input type='submit' class='button-primary' id='plugin-settings-save' value='".__('Save Settings','autosave-net')."'>";
-	echo "</td></tr></table>";
+	echo "</td></tr></table><br><br>";
 	echo "</form>";
 
-	// Sidebar Floatbox
-	// ----------------
-	global $vautosavenetversion;
-	// $vargs = array('asn','autosave-net','free','autosave-net','yes','AutoSave Net',$vautosavenetversion);
-	$vargs = array('autosave-net','yes'); // trimmed settings
-	if (function_exists('wqhelper_sidebar_floatbox')) {
-		wqhelper_sidebar_floatbox($vargs);
-		echo wqhelper_sidebar_floatmenuscript();
-
-		echo '<script language="javascript" type="text/javascript">
-		floatingMenu.add("floatdiv", {targetRight: 10, targetTop: 20, centerX: false, centerY: false});
-		function move_upper_right() {
-			floatingArray[0].targetTop=20;
-			floatingArray[0].targetBottom=undefined;
-			floatingArray[0].targetLeft=undefined;
-			floatingArray[0].targetRight=10;
-			floatingArray[0].centerX=undefined;
-			floatingArray[0].centerY=undefined;
-		}
-		move_upper_right();
-		</script>';
-	}
-
-	echo '</div>';
-	echo "</div>";
+	echo '</div></div>'; // close wrapbox
+	echo '</div>'; // close wrap
 }
 
 // ==================
@@ -583,10 +611,10 @@ function autosave_net_quicksave_metabox() {
 
 	// QuickSave Info Box
 	// ------------------
-	// 1.2.0: fix to plugin_dir_url logic here
+	// 1.2.0: fix to icon logic here
 	if (file_exists(get_stylesheet_directory().'/images/quicksave-icons.png')) {$viconsurl = get_stylesheet_directory_uri().'/images/quicksave-icons.png';}
 	elseif (file_exists(get_template_directory().'/images/quicksave-icons.png')) {$viconsurl = get_template_directory_uri().'/images/quicksave-icons.png';}
-	else {$viconsurl = plugin_dir_url(__FILE__).'images/quicksave-icons.png';}
+	else {$viconsurl = plugins_url('images/quicksave-icons.png',__FILE__);}
 	// else {$viconurl = admin_url('/images/menu.png'); $vmenuicon = 'yes';}
 	$vmenuicon = 'no';
 
@@ -631,8 +659,7 @@ function autosave_net_quicksave_metabox() {
 	echo '<td><input type="button" class="button-secondary" title="'.__('Decrement Timer Length','autosave-net').'" value="-" style="font-weight:bold;" onclick="quicksave_decrement_timer();"></td>';
 	echo '<td><input type="text" id="quicksavetime" value="'.$vquicksavetimer.'" style="width:50px;text-align:center;"></td>';
 	echo '<td><input type="button" class="button-secondary" title="'.__('Increment Timer Length','autosave-net').'" value="+" style="font-weight:bold;" onclick="quicksave_increment_timer();"></td>';
-	echo '<td width="5"></td>';
-	echo '<td>second save cycle.</td>';
+	echo '<td width="5"></td><td>'.__('second save cycle','autosave-net').'.</td>';
 	echo '</tr></table></td>';
 
 	// Readonly Timer Countdown
