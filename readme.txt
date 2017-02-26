@@ -62,6 +62,13 @@ From there you can restore the QuickSaved content if you wish.
 
 == Changelog ==
 
+= 1.3.1 = 
+* Update Freemius Library 1.2.1.5
+* Update to Wordquest Library 1.6.6
+* Added fallback to default options
+* Fix to empty settings warnings
+* Added activation welcome message
+
 = 1.3.0 =
 * Update to Wordquest Libarary 1.6.5
 * Change plugin_dir_url usage to plugins_url

@@ -4,6 +4,8 @@
 // WORDQUEST HELPER PLUGIN
 // =======================
 
+$wordquestversion = '1.6.6';
+
 // Requires PHP 5.3 (for anonymous function usage)
 // (otherwise helper library loads nothing)
 
@@ -20,9 +22,16 @@
 //	}
 // }
 
+// TODO: collapse/expand buttons for sidebar?
+
 // ================
 // HELPER CHANGELOG
 // ================
+
+// -- 1.6.6 --
+// - check wordpress.org only installs/availability
+// - sanitize posted wqhv version value
+// - add permission check to debug switch
 
 // -- 1.6.5 --
 // - added stickykit to replace float script
@@ -62,8 +71,6 @@
 // -- 1.2.0 --
 // - added bonus report
 
-// TODO: collapse/expand buttons for sidebar?
-
 
 // START CODE - PHP 5.3 MINIMUM REQUIRED FOR ANONYMOUS FUNCTIONS
 // -------------------------------------------------------------
@@ -72,19 +79,21 @@ if (version_compare(PHP_VERSION, '5.3.0') >= 0) {
 // Set this Wordquest Helper Plugin version
 // ----------------------------------------
 // 1.6.0: wqv to wqhv for new variable functions
-$wordquestversion = '1.6.5'; $wqhv = str_replace('.','',$wordquestversion);
+// 1.6.6: move wordquestversion to top for easy changing
+$wqhv = str_replace('.','',$wordquestversion);
 
-// 1.6.5: set global site URLs
-// ---------------------------
+// set global site URLs
+// --------------------
+// 1.6.5: for clearer/cleaner usage
 global $wqurls;
-$wqurls['wq'] = 'http://wordquest.org';
-$wqurls['prn'] = 'http://pluginreview.net';
-$wqurls['bio'] = 'http://bioship.space';
+$wqurls = array('wq' => 'http://wordquest.org',
+				'prn' => 'http://pluginreview.net',
+				'bio' => 'http://bioship.space');
 
-// 1.6.5: maybe set debug switch
-// -----------------------------
+// set debug switch default
+// ----------------------
+// 1.6.6: set debug switch to off to recheck later
 global $wqdebug; $wqdebug = false;
-if ( (isset($_REQUEST['wqdebug'])) && ($_REQUEST['wqdebug'] == 'yes') ) {$wqdebug = true;}
 
 // =================================
 // Version Handling Loader Functions
@@ -107,8 +116,13 @@ if (!function_exists('wqhelper_admin_loader')) {
  function wqhelper_admin_loader() {
  	global $wqdebug;
 
- 	// 1.6.0: maybe remove the pre 1.6.0 load action?
- 	// if (has_action('admin_init','wordquest_admin_load')) {remove_action('admin_init','wordquest_admin_load');}
+	// 1.6.6: check debug switch here so we can check permissions
+	if (current_user_can('manage_options')) {
+		if ( (isset($_REQUEST['wqdebug'])) && ($_REQUEST['wqdebug'] == 'yes') ) {$wqdebug = true;}
+	}
+
+ 	// 1.6.0: maybe remove the pre 1.6.0 loader action
+ 	if (has_action('admin_init','wordquest_admin_load')) {remove_action('admin_init','wordquest_admin_load');}
 
  	// 1.6.0: new globals used for new method
  	global $wordquesthelper, $wordquesthelpers;
@@ -281,6 +295,9 @@ if (!has_action('wp_ajax_wqhelper_update_sidebar_boxes','wqhelper_update_sidebar
 if (!function_exists('wqhelper_update_sidebar_boxes')) {
  function wqhelper_update_sidebar_boxes() {
  	if (!isset($_POST['wqhv'])) {return;} else {$wqhv = $_POST['wqhv'];}
+ 	// 1.6.6: sanitize version value
+ 	if ( (!is_numeric($wqhv)) || (strlen($wqhv) !== 3) ) {return;}
+
  	$vfunc = 'wqhelper_update_sidebar_options_'.$wqhv;
 
  	// 1.6.5: fix to function call method
@@ -372,7 +389,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
  			}
  		} else {
  			$vsidebaroptions['installdate'] = date('Y-m-d');
- 			updateoption($vpre.'_sidebar_options',$vsidebaroptions);
+ 			update_option($vpre.'_sidebar_options',$vsidebaroptions);
  		}
  	}
  };
@@ -473,7 +490,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 	global $wordquesthelper, $wordquestplugins, $wqurls;
 
-	echo '<div class="wrap">';
+	echo '<div id="pagewrap" class="wrap">';
 
 	// Call Admin Notice Boxer
 	wqhelper_admin_notice_boxer();
@@ -493,7 +510,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 	// Floating Sidebar
 	// ----------------
-	// set 'plugin' values for sidebar
+	// set "plugin" values for sidebar
 	global $wordquestplugins, $wordquesthelper;
 	$wordquestplugins['wordquest']['version'] = $wordquesthelper;
 	$wordquestplugins['wordquest']['title'] = 'WordQuest Alliance';
@@ -501,8 +518,9 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	$wordquestplugins['wordquest']['settings'] = 'wq';
 	$wordquestplugins['wordquest']['plan'] = 'free';
 	$wordquestplugins['wordquest']['wporg'] = false;
-	$wordquestplugins['wordquest']['wporgslug'] = '';
-	$vargs = array('wordquest','special'); wqhelper_sidebar_floatbox($vargs);
+	$wordquestplugins['wordquest']['wporgslug'] = false;
+	$vargs = array('wordquest','special');
+	wqhelper_sidebar_floatbox($vargs);
 
 	// 1.6.5: replace floatmenu with stickykit
 	echo wqhelper_sidebar_stickykitscript();
@@ -577,9 +595,19 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 	global $wordquesthelper, $wordquestplugins, $wqurls, $wqdebug;
 
+	// check if WordPress.Org Plugins only
+	// -----------------------------------
+	// 1.6.6: check if current WQ plugins are all installed via WordPress.Org
+	// (if so, only provide option to install other WQ plugins in repository)
+	global $wordpressorgonly; $wordpressorgonly = true;
+	foreach ($wordquestplugins as $pluginslug => $plugin) {
+		// if this is false, it was from wordquest not wordpress
+		if (!$plugin['wporg']) {$wordpressorgonly = false;}
+	}
+
 	// Plugin Action Select Javascript
 	// -------------------------------
-	// note: some options unused/untested here...
+	// TODO: test all options here more thoroughly...
 	echo "<script>
 	function dopluginaction(pluginslug) {
 		var selectelement = document.getElementById(pluginslug+'-action');
@@ -617,7 +645,8 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 
 	// Get Plugin Update Info
 	// ----------------------
-	$vi = 0; $vupdateplugins = get_site_transient('update_plugins');
+	// 1.6.6: define empty pluginupdates array
+	$vi = 0; $vupdateplugins = get_site_transient('update_plugins'); $vpluginupdates = array();
 	foreach ($vupdateplugins->response as $vpluginfile => $vvalues) {$vpluginupdates[$vi] = $vvalues->slug; $vi++;}
 	// if ($wqdebug) {echo "<!-- Plugin Updates: "; print_r($vupdateplugins); echo " -->";}
 	// if ($wqdebug) {echo "<!-- Plugin Update Slugs: "; print_r($vpluginupdates); echo " -->";}
@@ -643,10 +672,14 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 				if (isset($vplugin['tags'])) {$vwqplugins[$vpluginslug]['tags'] = $vplugin['tags'];}
 				if (isset($vplugin['cats'])) {$vwqplugins[$vpluginslug]['cats'] = $vplugin['cats'];}
 
-				// 1.6.5: check release date and  status
+				// 1.6.5: check release date and status
 				if (isset($vplugin['releasedate'])) {$vwqplugins[$vpluginslug]['releasedate'] = $vplugin['releasedate'];}
 				if (isset($vplugin['releasestatus'])) {$vwqplugins[$vpluginslug]['releasestatus'] = $vplugin['releasestatus'];}
 				else {$vwqplugins[$vpluginslug]['releasestatus'] = 'Upcoming';}
+
+				// 1.6.6: check for wordpress.org slug
+				if (isset($vplugin['wporgslug'])) {$vwqplugins[$vpluginslug]['wporgslug'] = $vplugin['wporgslug'];}
+				else {$vwpplugins[$vpluginslug]['wporgslug'] = false;}
 
 				if (in_array($vpluginslug,$vinstalledslugs)) {$vwqplugins[$vpluginslug]['installed'] = 'yes';}
 				else {$vwqplugins[$vpluginslug]['installed'] = 'no';}
@@ -807,16 +840,30 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 			echo '<h2 class="hndle" onclick="togglemetabox(\''.$boxid.'\');"><span>'.$boxtitle.'</span></h2>';
 			echo '<div class="inside" id="'.$boxid.'-inside" style="margin-bottom:0;"><table>';
 			foreach ($vreleasedplugins as $vpluginslug => $vwqplugin) {
+
 				// 1.6.5: add separate install link URL for each plugin for nonce checking
-				$vinstalllink = wp_nonce_url(admin_url('update.php')."?action=wordquest_plugin_install&plugin=".$vpluginslug,'plugin-upload');
-				echo "<input type='hidden' name='".$vpluginslug."-install-link' value='".$vinstalllink."'>";
+				// 1.6.6: use wordpress.org link if all plugins are from wordpress.org
+				if ( ($wordpressorgonly) && ($vwqplugin['wporgslug']) ) {
+					$vinstalllink = wp_nonce_url(self_admin_url('update.php')."?action=install-plugin&plugin=".$vwqplugin['wporgslug'], 'install-plugin_'.$vwqplugin['wporgslug']);
+					echo "<input type='hidden' name='".$vpluginslug."-install-link' value='".$vinstalllink."'>";
+				} elseif ( (!$wordpressorgonly) && (is_array($vwqplugin['package'])) ) {
+					$vinstalllink = wp_nonce_url(admin_url('update.php')."?action=wordquest_plugin_install&plugin=".$vpluginslug, 'plugin-upload');
+					echo "<input type='hidden' name='".$vpluginslug."-install-link' value='".$vinstalllink."'>";
+				}
 
 				echo "<tr><td><a href='".$vwqplugin['home']."' class='pluginlink' target=_blank>";
 				echo $vwqplugin['title']."</a></td><td width='20'></td>";
 				// echo "<td>".$vwqplugin['version']."</td><td width='20'></td>";
 
 				echo "<td><select name='".$vpluginslug."-action' id='".$vpluginslug."-action' style='font-size:8pt;'>";
-				if (is_array($vwqplugin['package'])) {
+
+				// 1.6.6: check if only wp.org plugins installable
+				if ( ($wordpressorgonly) && ($vwqplugin['wporgslug']) ) {
+					// has a wordpress.org slug so installable from repository
+					echo "<option value='install' selected='selected'>".__('Install Now')."</option>";
+					echo "<option value='home'>".__('Plugin Home')."</option>";
+				} elseif ( (!$wordpressorgonly) && (is_array($vwqplugin['package'])) ) {
+					// not all plugins are from wordpress.org, use the install package
 					echo "<option value='install' selected='selected'>".__('Install Now')."</option>";
 					echo "<option value='home'>".__('Plugin Home')."</option>";
 				} else {
@@ -892,7 +939,7 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 					echo __('to test BioShip without affecting your current site.');
 				} else {
 					// Theme Test Drive plugin installation link
-					$vinstalllink = wp_nonce_url(admin_url('update.php').'?action=install-plugin&plugin=theme-test-drive','install-plugin');
+					$vinstalllink = wp_nonce_url(admin_url('update.php').'?action=install-plugin&plugin=theme-test-drive', 'install-plugin');
 				 	echo __('or').', <a href="'.$vinstalllink.'">'.__('install Theme Test Drive plugin').'</a><br>';
 				 	echo __('to test BioShip without affecting your current site.');
 				}
@@ -967,8 +1014,18 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 			echo "<a href='".$vlatestrelease['home']."' target=_blank><b>".$vrelease['title']."</b></a></td><td width='10'></td>";
 			echo "<td><span style='font-size:9pt;'>".$vrelease['description']."</span><br><br>";
 			if ( (isset($vrelease['package'])) && (is_array($vrelease['package'])) ) {
-				$vinstalllink = wp_nonce_url(admin_url('update.php')."?action=wordquest_plugin_install&plugin=".$vrelease['slug'],'plugin-upload');
-				echo "<center><a href='".$vinstalllink."' class='button-primary'>".__('Install Now')."</a></center>";
+				// 1.6.6: check for wordpress.org only installs
+				global $wordpressorgonly; $vinstalllink = false;
+				if ( ($wordpressorgonly) && ($vrelease['wporgslug']) ) {
+					$vinstalllink = wp_nonce_url(self_admin_url('update.php')."?action=install-plugin&plugin=".$vrelease['wporgslug'], 'install-plugin_'.$vrelease['wporgslug']);
+				} else {$vinstalllink = wp_nonce_url(admin_url('update.php')."?action=wordquest_plugin_install&plugin=".$vrelease['slug'], 'plugin-upload');}
+				if ($vinstalllink) {
+					echo "<input type='hidden' name='".$vrelease['slug']."-install-link' value='".$vinstalllink."'>";
+					echo "<center><a href='".$vinstalllink."' class='button-primary'>".__('Install Now')."</a></center>";
+				} else {
+					$vpluginlink = $wqurls['wq'].'/plugins/'.$vrelease['slug'];
+					echo "<center><a href='".$vpluginlink."' class='button-primary' target=_blank>&rarr; ".__('Plugin Home')."</a></center>";
+				}
 			} else {echo "<center>".__('Expected').": ".date('jS F Y',strtotime($vrelease['releasedate']));}
 			echo "</td></tr></table>";
 			echo '</table></div></div>';
@@ -1081,7 +1138,12 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	check_admin_referer('plugin-upload');
 
 	// get the package info from download server
+	if (!isset($_REQUEST['plugin'])) {wp_die( __('Error: No Plugin specified.') );}
 	$vpluginslug = $_REQUEST['plugin'];
+	// 1.5.9: sanitize plugin slug
+	$vpluginslug = sanitize_title($vpluginslug);
+	if ($vpluginslug == '') {wp_dir( __('Error: Invalid Plugin slug specified.') );}
+
 	$vurl = $wqurls['wq'].'/downloads/?action=get_metadata&slug='.$vpluginslug;
 	$vresponse = wp_remote_get($vurl,array('timeout' => 30));
 	if (!is_wp_error($vresponse)) {
@@ -1980,13 +2042,23 @@ if ( (!isset($wqfunctions[$vfuncname])) || (!is_callable($wqfunctions[$vfuncname
 	if ( (isset($_REQUEST['page'])) && ($_REQUEST['page'] == 'wordquest') ) {
 		// do not duplicate here as already output for wordquest page
 	} elseif ( (isset($vlatestrelease)) && (is_array($vlatestrelease)) && ($vlatestrelease['installed'] == 'no') ) {
-		$vinstalllink = wp_nonce_url(admin_url('update.php').'?action=wordquest_plugin_install&plugin='.$vlatestrelease['slug'],'plugin-upload');
 		echo "<b>".__('Latest Plugin Release')."</b><br>";
 		echo "<table><tr><td align='center'><img src='".$vlatestrelease['icon']."' width='75' height='75'><br>";
 		echo "<a href='".$vlatestrelease['home']."' target=_blank><b>".$vlatestrelease['title']."</b></a></td>";
 		echo "<td width='10'></td><td><span style='font-size:9pt;'>".$vlatestrelease['description']."</span><br><br>";
 		if ( (isset($vlatestrelease['package'])) && (is_array($vlatestrelease['package'])) ) {
-			echo "<center><a href='".$vinstalllink."' class='button-primary'>".__('Install Now')."</a></center>";
+			// 1.6.6: check for wordpress.org only installs
+			global $wordpressorgonly; $vinstalllink = false;
+			if ( ($wordpressorgonly) && ($vwqplugin['wporgslug']) ) {
+				$vinstalllink = wp_nonce_url(self_admin_url('update.php')."?action=install-plugin&plugin=".$vlatestrelease['wporgslug'], 'install-plugin_'.$vlatestrelease['wporgslug']);
+			} else {$vinstalllink = wp_nonce_url(admin_url('update.php').'?action=wordquest_plugin_install&plugin='.$vlatestrelease['slug'], 'plugin-upload');}
+			if ($vinstalllink) {
+				echo "<input type='hidden' name='".$vlatestrelease['slug']."-install-link' value='".$vinstalllink."'>";
+				echo "<center><a href='".$vinstalllink."' class='button-primary'>".__('Install Now')."</a></center>";
+			} else {
+				$vpluginlink = $wqurls['wq'].'/plugins/'.$vlatestrelease['slug'];
+				echo "<center><a href='".$vpluginlink."' class='button-primary' target=_blank>&rarr; ".__('Plugin Home')."</a></center>";
+			}
 		}
 		echo "</td></tr></table><br>";
 	} elseif ( (isset($vnextrelease)) && (is_array($vnextrelease)) ) {

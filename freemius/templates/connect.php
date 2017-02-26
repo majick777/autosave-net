@@ -58,7 +58,7 @@
 	}
 
 	if ( $require_license_key ) {
-		$fs->_require_license_activation_dialog();
+		$fs->_add_license_activation_dialog_box();
 	}
 
 	$fs_user                    = Freemius::_get_user_by_email( $current_user->user_email );
@@ -93,7 +93,8 @@
 						__fs( 'pending-activation-message', $slug ),
 						$first_name,
 						'<b>' . $fs->get_plugin_name() . '</b>',
-						'<b>' . $current_user->user_email . '</b>'
+						'<b>' . $current_user->user_email . '</b>',
+						__fs( 'complete-the-install', $slug )
 					) );
 				} else if ( $require_license_key ) {
 					$button_label = 'agree-activate-license';
@@ -122,10 +123,9 @@
 					}
 
 					echo $fs->apply_filters( $filter,
+						sprintf( __fs( 'hey-x', $slug ), $first_name ) . '<br>' .
 						sprintf(
-							__fs( 'hey-x', $slug ) . '<br>' .
 							__fs( $default_optin_message, $slug ),
-							$first_name,
 							'<b>' . $fs->get_plugin_name() . '</b>',
 							'<b>' . $current_user->user_login . '</b>',
 							'<a href="' . $site_url . '" target="_blank">' . $site_url . '</a>',
@@ -151,7 +151,7 @@
 	</div>
 	<div class="fs-actions">
 		<?php if ( $fs->is_enable_anonymous() && ! $is_pending_activation && ! $require_license_key ) : ?>
-			<a href="<?php echo wp_nonce_url( $fs->_get_admin_page_url( '', array( 'fs_action' => $slug . '_skip_activation' ) ), $slug . '_skip_activation' ) ?>"
+			<a href="<?php echo fs_nonce_url( $fs->_get_admin_page_url( '', array( 'fs_action' => $slug . '_skip_activation' ) ), $slug . '_skip_activation' ) ?>"
 			   class="button button-secondary" tabindex="2"><?php _efs( 'skip', $slug ) ?></a>
 		<?php endif ?>
 
@@ -191,6 +191,12 @@
 				'label'      => __fs( 'permissions-site' ),
 				'desc'       => __fs( 'permissions-site_desc' ),
 				'priority'   => 10,
+			),
+			'notices'  => array(
+				'icon-class' => 'dashicons dashicons-testimonial',
+				'label'      => __fs( 'permissions-admin-notices' ),
+				'desc'       => __fs( 'permissions-newsletter_desc' ),
+				'priority'   => 13,
 			),
 			'events'  => array(
 				'icon-class' => 'dashicons dashicons-admin-plugins',
@@ -278,6 +284,7 @@
 			$(document.body).css({'cursor': 'wait'});
 
 			var $this = $(this);
+			$this.css({'cursor': 'wait'});
 
 			setTimeout(function () {
 				$this.attr('disabled', 'disabled');
@@ -298,7 +305,7 @@
 					 * process the after install failure hook.
 					 *
 					 * @author Vova Feldman (@svovaf)
-					 * @since 1.2.2
+					 * @since 1.2.1.5
 					 */
 					$.ajax({
 						url    : ajaxurl,
@@ -344,7 +351,7 @@
 
 		$primaryCta.on('click', function () {
 			$(this).addClass('fs-loading');
-			$(this).html(<?php echo json_encode(__fs( $is_pending_activation ? 'sending-email' : 'activating' , $slug )) ?> +'...').css({'cursor': 'wait'});
+			$(this).html(<?php echo json_encode(__fs( $is_pending_activation ? 'sending-email' : 'activating' , $slug )) ?> +'...');
 		});
 
 		$('.fs-permissions .fs-trigger').on('click', function () {

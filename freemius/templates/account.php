@@ -36,7 +36,7 @@
 	$show_upgrade           = ( $fs->has_paid_plan() && ! $is_paying && ! $is_paid_trial );
 
 	if ( $show_upgrade ) {
-		$fs->_require_license_activation_dialog();
+		$fs->_add_license_activation_dialog_box();
 	}
 ?>
 	<div class="wrap">
@@ -290,7 +290,7 @@
 								<?php else : ?>
 									<form action="<?php echo $fs->_get_admin_page_url( 'account' ) ?>"
 									      method="POST" class="button-group">
-										<?php if ($show_upgrade) : ?>
+										<?php if ( $show_upgrade && $fs->is_premium() ) : ?>
 										<a class="button activate-license-trigger <?php echo $slug ?>" href="#"><?php _efs( 'activate-license', $slug ) ?></a>
 										<?php endif ?>
 										<input type="submit" class="button"
@@ -533,6 +533,31 @@
 								array( 'plugin_id' => $addon_id ),
 								false
 							);
+
+							$human_readable_license_expiration = human_time_diff( time(), strtotime( $license->expiration ) );
+							$downgrade_confirmation_message    = sprintf( __fs( 'downgrade-x-confirm', $slug ),
+																      $plan->title,
+																	  $human_readable_license_expiration );
+
+							$after_downgrade_message_id = ( ! $license->is_block_features ?
+								'after-downgrade-non-blocking' :
+								'after-downgrade-blocking' );
+
+							$after_downgrade_message = sprintf( __fs( $after_downgrade_message_id, $slug ), $plan->title );
+
+							if ( ! $license->is_lifetime() && $is_active_subscription ) {
+								$buttons[] = fs_ui_get_action_button(
+									$slug,
+									'account',
+									'downgrade_account',
+									__fs( 'downgrade', $slug ),
+									array( 'plugin_id' => $addon_id ),
+									false,
+									false,
+									( $downgrade_confirmation_message . ' ' . $after_downgrade_message ),
+									'POST'
+								);
+							}
 						} else if ( $is_paid_trial ) {
 							$buttons[] = fs_ui_get_action_button(
 								$slug,
