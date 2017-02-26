@@ -8,6 +8,7 @@ Version: 1.3.0
 Author: Tony Hayes
 Author URI: http://dreamjester.net
 GitHub Plugin URI: majick777/autosave-net
+@fs_premium_only pro-functions.php
 */
 
 if (!function_exists('add_action')) {exit;}
@@ -182,7 +183,12 @@ function autosave_net_get_option($vkey,$vfilter=false) {
 	if (isset($vasnoptions[$vkey])) {
 		if ($vfilter) {return apply_filters($vkey,$vasnoptions[$vkey]);}
 		else {return $vasnoptions[$vkey];}
-	} else {return '';}
+	} else {
+		// 1.3.1: fallback to default options
+		$vdefaults = autosave_net_default_options();
+		if (isset($vdefaults[$vkey])) {return $vdefaults[$vkey];}
+		else {return '';}
+	}
 }
 
 // Set Defaults on Activation
@@ -192,7 +198,19 @@ function autosave_net_add_options() {
 
 	// 1.2.5: use global options array
 	global $vasnoptions;
+	// 1.3.1: use default options function
+	$vasnoptions = autosave_get_default_options();
+	add_option('autosave_net',$vasnoptions);
 
+	if (file_exists(dirname(__FILE__).'/updatechecker.php')) {$vadsboxoff = '';} else {$vadsboxoff = 'checked';}
+	$sidebaroptions = array('adsboxoff'=>$vadsboxoff,'donationboxoff'=>'','reportboxoff'=>'','installdate'=>date('Y-m-d'));
+	add_option('asn_sidebar_options',$sidebaroptions);
+}
+
+// get Default Options
+// -------------------
+// 1.3.1: separate defaults function
+function autosave_net_default_options() {
 	$vasnoptions['quicksave_timer'] = '60';
 	$vasnoptions['quicksave_post_types'] = array('post','page');
 	$vasnoptions['quicksave_notice_screens'] = array('post.php','edit.php');
@@ -202,11 +220,7 @@ function autosave_net_add_options() {
 	$vasnoptions['autosave_revisions'] = '';
 	$vasnoptions['autosave_time'] = '300';
 
-	add_option('autosave_net',$vasnoptions);
-
-	if (file_exists(dirname(__FILE__).'/updatechecker.php')) {$vadsboxoff = '';} else {$vadsboxoff = 'checked';}
-	$sidebaroptions = array('adsboxoff'=>$vadsboxoff,'donationboxoff'=>'','reportboxoff'=>'','installdate'=>date('Y-m-d'));
-	add_option('asn_sidebar_options',$sidebaroptions);
+	return $vasnoptions;
 }
 
 // Update Options
@@ -328,7 +342,13 @@ function autosave_net_options_page() {
 		echo "<tr><td colspan='3' align='center'>".__('by','autosave-net');
 		echo " <a href='http://wordquest.org/' style='text-decoration:none;' target=_blank><b>WordQuest Alliance</b></a>";
 		echo "</td></tr></table>";
-	echo "</td><td width='100'></td>";
+	echo "</td><td width='50'></td>";
+	// 1.3.1: added welcome message
+	if ( (isset($_REQUEST['welcome'])) && ($_REQUEST['welcome'] == 'true') ) {
+		echo "<td><table style='background-color: lightYellow; border-style:solid; border-width:1px; border-color: #E6DB55; text-align:center;'>";
+		echo "<tr><td><div class='message' style='margin:0.25em;'><font style='font-weight:bold;'>";
+		echo __('Welcome! For usage see','autosave-net')." <i>readme.txt</i> FAQ</font></div></td></tr></table></td>";
+	}
 	if ( (isset($_REQUEST['updated'])) && ($_REQUEST['updated'] == 'yes') ) {
 		echo "<td><table style='background-color: lightYellow; border-style:solid; border-width:1px; border-color: #E6DB55; text-align:center;'>";
 		echo "<tr><td><div class='message' style='margin:0.25em;'><font style='font-weight:bold;'>";
@@ -339,7 +359,7 @@ function autosave_net_options_page() {
 	echo "<div id='wrapbox' class='postbox' style='width:680px;line-height:2em;'><div class='inner' style='padding-left:20px;'>";
 
 	echo "<form method='post' action='admin.php?page=".$vasnslug."&updated=yes'>";
-	// 1.2.5: add nonce field
+	// 1.2.5: added nonce field
 	wp_nonce_field('autosave_net');
 	echo "<input type='hidden' name='autosave_net_save_options' value='yes'>";
 	echo "<table cellpadding='0' cellspacing='0'>";
@@ -360,10 +380,11 @@ function autosave_net_options_page() {
 	$vargs = array('public'=>false, '_builtin' => false);
 	$vcptlist = get_post_types($vargs,'names','and');
 	$vdefaultcpts = array_merge($vcpts,$vcptlist);
-	$vquicksaveposttypes = $vasnoptions['quicksave_post_types'];
+	$vquicksavetypes = $vasnoptions['quicksave_post_types'];
 	foreach ($vdefaultcpts as $vcpt) {
 		echo "<input type='checkbox' name='quicksave_type_".$vcpt."' value='1'";
-		if (in_array($vcpt,$vquicksaveposttypes)) {echo " checked";}
+		// 1.3.1: fix to warning when option not set
+		if ( (is_array($vquicksavetypes)) && (in_array($vcpt,$vquicksavetypes)) ) {echo " checked";}
 		echo "> ".strtoupper(substr($vcpt,0,1)).substr($vcpt,1,strlen($vcpt))."<br>";
 	}
 	echo "</td><td width='10'></td>";
@@ -464,7 +485,8 @@ function autosave_net_get_just_post_content($vpostid) {
 add_action('admin_init','autosave_net_quicksave_add_metabox');
 function autosave_net_quicksave_add_metabox() {
 	$vcpts = autosave_net_get_option('quicksave_post_types');
-	if (!is_array($vcpts)) {$vcpts = $vposttypes;}
+	// 1.3.1: fix to default array fallback
+	if (!is_array($vcpts)) {$vcpts = array('post','page');}
 	foreach ($vcpts as $vcpt) {
 		add_meta_box('autosave_net_metabox', __('QuickSave Content Backup Timer','autosave-net'), 'autosave_net_quicksave_metabox', $vcpt, 'normal', 'low');
 	}
