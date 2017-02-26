@@ -4,7 +4,7 @@
 Plugin Name: AutoSave Net
 Plugin URI: http://wordquest.org/plugins/autosave-net/
 Description: Auto-save safety net! Timed Backup of your Post Content while writing, with instant compare and restore content metabox.
-Version: 1.3.0
+Version: 1.3.1
 Author: Tony Hayes
 Author URI: http://dreamjester.net
 GitHub Plugin URI: majick777/autosave-net
