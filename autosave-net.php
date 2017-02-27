@@ -29,7 +29,7 @@ if (!function_exists('add_action')) {exit;}
 // -----------------
 global $wordquestplugins;
 $vslug = $vasnslug = 'autosave-net';
-$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.3.0';
+$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.3.1';
 $wordquestplugins[$vslug]['title'] = 'AutoSave Net';
 $wordquestplugins[$vslug]['namespace'] = 'autosave_net';
 $wordquestplugins[$vslug]['settings'] = 'asn';
