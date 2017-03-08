@@ -4,7 +4,7 @@
 Plugin Name: AutoSave Net
 Plugin URI: http://wordquest.org/plugins/autosave-net/
 Description: Auto-save safety net! Timed Backup of your Post Content while writing, with instant compare and restore content metabox.
-Version: 1.3.1
+Version: 1.3.2
 Author: Tony Hayes
 Author URI: http://dreamjester.net
 GitHub Plugin URI: majick777/autosave-net
@@ -29,7 +29,7 @@ if (!function_exists('add_action')) {exit;}
 // -----------------
 global $wordquestplugins;
 $vslug = $vasnslug = 'autosave-net';
-$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.3.1';
+$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.3.2';
 $wordquestplugins[$vslug]['title'] = 'AutoSave Net';
 $wordquestplugins[$vslug]['namespace'] = 'autosave_net';
 $wordquestplugins[$vslug]['settings'] = 'asn';
@@ -199,7 +199,8 @@ function autosave_net_add_options() {
 	// 1.2.5: use global options array
 	global $vasnoptions;
 	// 1.3.1: use default options function
-	$vasnoptions = autosave_get_default_options();
+	// 1.3.2: fix to default function typo
+	$vasnoptions = autosave_net_default_options();
 	add_option('autosave_net',$vasnoptions);
 
 	if (file_exists(dirname(__FILE__).'/updatechecker.php')) {$vadsboxoff = '';} else {$vadsboxoff = 'checked';}
