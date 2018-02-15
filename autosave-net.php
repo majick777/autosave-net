@@ -4,7 +4,7 @@
 Plugin Name: AutoSave Net
 Plugin URI: http://wordquest.org/plugins/autosave-net/
 Description: Auto-save safety net! Timed Backup of your Post Content while writing, with instant compare and restore content metabox.
-Version: 1.3.2
+Version: 1.3.3
 Author: Tony Hayes
 Author URI: http://dreamjester.net
 GitHub Plugin URI: majick777/autosave-net
@@ -20,6 +20,33 @@ if (!function_exists('add_action')) {exit;}
 // TODO: ability to compare to earlier AutoSave Revisions Content?
 */
 
+// ----------------------------
+// Options / Filter Usage Notes
+// ----------------------------
+
+// use these filters to adjust autosave/revision limit on a conditional basis
+// 'autosave_disable' (return 0 or 1)
+// 'limit_post_revisions' (return empty or number)
+// note: since AUTOSAVE_INTERVAL is a constant no filter has been made for it
+
+// The default QuickSave Timer cycle is 60 seconds. To adjust use the filter:
+// 'quicksave_timer' (return a value in seconds)
+
+// By default Quicksave is active for all post types (including Custom Post Types.)
+// To adjust the post types for which QuickSave is active use the filter:
+// 'quicksave_post_types' (return an array of post types)
+
+// By default Quicksave 'backup found' top admin notice is for post.php and edit.php
+// For other post types which have their own edit screen, the notice is displayed
+// in the Quicksave metabox, but you may want to move it to the top of screen.
+// To adjust the screens for which Quicksave top admin notice is active use the filter:
+// 'quicksave_notice_screens' (return an array of .php admin values)
+
+// Quicksave metabox can be conditionally disabled by filter.
+// 'quicksave_disabler' (return 1 to disable)
+
+
+
 // --------------------
 // === Setup Plugin ===
 // --------------------
@@ -29,7 +56,7 @@ if (!function_exists('add_action')) {exit;}
 // -----------------
 global $wordquestplugins;
 $vslug = $vasnslug = 'autosave-net';
-$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.3.2';
+$wordquestplugins[$vslug]['version'] = $vautosavenetversion = '1.3.3';
 $wordquestplugins[$vslug]['title'] = 'AutoSave Net';
 $wordquestplugins[$vslug]['namespace'] = 'autosave_net';
 $wordquestplugins[$vslug]['settings'] = 'asn';
@@ -73,11 +100,19 @@ function asn_freemius($vslug) {
 	}
 
     if (!isset($asn_freemius)) {
-        if (!class_exists('Freemius')) {require_once(dirname(__FILE__).'/freemius/start.php');}
 
+        // start the Freemius SDK
+        if (!class_exists('Freemius')) {
+        	$vfreemiuspath = dirname(__FILE__).'/freemius/start.php';
+        	if (!file_exists($vfreemiuspath)) {return;}
+        	require_once($vfreemiuspath);
+        }
+
+		// 1.3.3: added type plugin to settings
 		$asn_settings = array(
             'id'                => '146',
             'slug'              => $vslug,
+            'type'				=> 'plugin',
             'public_key'        => 'pk_4c378ea656ccc7fb19bb6227eecca',
             'is_premium'        => $vpremium,
             'has_addons'        => false,
@@ -86,7 +121,7 @@ function asn_freemius($vslug) {
             'menu'              => array(
                 'slug'       	=> $vslug,
                 'first-path' 	=> 'admin.php?page='.$vslug.'&welcome=true',
-                'parent'		=> array('slug'=>'wordquest'),
+                'parent'		=> array('slug' => 'wordquest'),
                 'contact'		=> $vpremium,
                 // 'support'    => false,
                 // 'account'    => false,
@@ -107,7 +142,10 @@ function asn_freemius_connect($message, $user_first_name, $plugin_title, $user_l
 		$user_first_name, '<b>'.$plugin_title.'</b>', '<b>'.$user_login.'</b>', $site_link, $freemius_link
 	);
 }
-$asn_freemius->add_filter('connect_message', 'asn_freemius_connect', WP_FS__DEFAULT_PRIORITY, 6);
+// 1.3.3: add object and method exists checks
+if ( (is_object($asn_freemius)) && (method_exists($asn_freemius,'add_filter')) ) {
+	$asn_freemius->add_filter('connect_message', 'asn_freemius_connect', WP_FS__DEFAULT_PRIORITY, 6);
+}
 
 // ---------------
 // Add Admin Menus
@@ -145,32 +183,6 @@ function asn_settings_menu() {
 }
 
 
-// -----------------
-// Options / Filters
-// -----------------
-
-// use these filters to adjust autosave/revision limit on a conditional basis
-// 'autosave_disable' (return 0 or 1)
-// 'limit_post_revisions' (return empty or number)
-// note: since AUTOSAVE_INTERVAL is a constant no filter has been made for it
-
-// The default QuickSave Timer cycle is 60 seconds. To adjust use the filter:
-// 'quicksave_timer' (return a value in seconds)
-
-// By default Quicksave is active for all post types (including Custom Post Types.)
-// To adjust the post types for which QuickSave is active use the filter:
-// 'quicksave_post_types' (return an array of post types)
-
-// By default Quicksave 'backup found' top admin notice is for post.php and edit.php
-// For other post types which have their own edit screen, the notice is displayed
-// in the Quicksave metabox, but you may want to move it to the top of screen.
-// To adjust the screens for which Quicksave top admin notice is active use the filter:
-// 'quicksave_notice_screens' (return an array of .php admin values)
-
-// Quicksave metabox can be conditionally disabled by filter.
-// 'quicksave_disabler' (return 1 to disable)
-
-
 // Load Plugin Options Global
 // --------------------------
 // 1.2.5: use global plugin option
@@ -178,17 +190,18 @@ global $vasnoptions; $vasnoptions = get_option('autosave_net');
 
 // Get Plugin Option Helper
 // ------------------------
+// 1.3.3: streamlined this function
 function autosave_net_get_option($vkey,$vfilter=false) {
-	global $vasnoptions;
-	if (isset($vasnoptions[$vkey])) {
-		if ($vfilter) {return apply_filters($vkey,$vasnoptions[$vkey]);}
-		else {return $vasnoptions[$vkey];}
-	} else {
+	global $vasnoptions, $vasndefaults;
+	if (isset($vasnoptions[$vkey])) {$vvalue = $vasnoptions[$vkey];}
+	else {
 		// 1.3.1: fallback to default options
-		$vdefaults = autosave_net_default_options();
-		if (isset($vdefaults[$vkey])) {return $vdefaults[$vkey];}
-		else {return '';}
+		if (!isset($vasndefaults)) {$vasndefaults = autosave_net_default_options();}
+		if (isset($vasndefaults[$vkey])) {$vvalue = $vasndefaults[$vkey];}
+		else {$vvalue = null;}
 	}
+	if ($vfilter) {$vvalue = apply_filters($vkey, $vvalue);}
+	return $vvalue;
 }
 
 // Set Defaults on Activation
