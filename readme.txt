@@ -7,7 +7,7 @@ Plugin URI: http://wordquest.org/plugins/autosave-net/
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Requires at least: 3.0.0
-Tested up to: 4.7.2
+Tested up to: 4.9.1
 Stable tag: trunk
 
 Auto-saves on steroids! QuickSave Timed Backup of your Post Content while writing. Compare and Restore QuickSave backups metabox.
@@ -62,15 +62,23 @@ From there you can restore the QuickSaved content if you wish.
 
 == Changelog ==
 
+= 1.3.3 =
+* Update to Freemius SDK 1.2.2.9
+* Update to Wordquest Helper 1.6.9
+* Improved get filtered plugin settings
+
+= 1.3.2 =
+* Hotfix for default function typo
+
 = 1.3.1 = 
-* Update Freemius Library 1.2.1.5
-* Update to Wordquest Library 1.6.6
+* Update to Freemius SDK 1.2.1.5
+* Update to Wordquest Helper 1.6.6
 * Added fallback to default options
 * Fix to empty settings warnings
 * Added activation welcome message
 
 = 1.3.0 =
-* Update to Wordquest Libarary 1.6.5
+* Update to Wordquest Helper 1.6.5
 * Change plugin_dir_url usage to plugins_url
 * Added settings validation
 
