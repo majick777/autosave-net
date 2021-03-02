@@ -866,8 +866,10 @@ class PluginUpdateChecker_2_1 {
 	 */
 	public function initDebugBarPanel() {
 		if ( class_exists('Debug_Bar', false) ) {
-			require_once dirname(__FILE__) . '/debug-bar-plugin.php';
-			$this->debugBarPlugin = new PucDebugBarPlugin($this);
+			if ( file_exists( dirname(__FILE__) . '/debug-bar-plugin.php' ) ) {
+				require_once dirname(__FILE__) . '/debug-bar-plugin.php';
+				$this->debugBarPlugin = new PucDebugBarPlugin($this);
+			}
 		}
 	}
 }
@@ -1237,10 +1239,9 @@ PucFactory::addVersion('PucGitHubChecker', 'PucGitHubChecker_2_1', '2.1');
 // 	class PluginInfo extends PluginInfo_2_1 {}
 // }
 
-// maybe Load the Update Checker now
-if ( (isset($vslug)) && (isset($vfile)) ) {
-	$vurl = 'http://wordquest.org/downloads/?action=get_metadata&slug='.$vslug;
-	$vupdatecheck = new PluginUpdateChecker_2_1($vurl, $vfile, $vslug);
+// --- maybe Load the Update Checker now ---
+if (isset($slug) && isset($file)) {
+	$url = 'http://wordquest.org/downloads/?action=get_metadata&slug='.$slug;
+	$updatecheck = new PluginUpdateChecker_2_1($url, $file, $slug);
 }
 
-?>
